@@ -160,11 +160,14 @@ describe("a few simple tests with a node http server so that we can test differe
 	})
 //
 	it("proxy GET request to test server - no query string", function(done){
+		var certificatePath = __dirname + "/helpers/certs/ca-cert.pem";
+		var ca = fs.readFileSync(certificatePath, {encoding: 'utf-8'});
 		request({
 			tunnel : true,
 			method : "GET",
 		    url		: 'https://localhost:9991/test',
 		    proxy	: 'http://localhost:' + 4001,
+			ca: ca
 		  },function( err, res, body)
 			{
 				if (err) {
@@ -176,7 +179,7 @@ describe("a few simple tests with a node http server so that we can test differe
 				var bodyObj = JSON.parse(body)
 				assert.notEqual(bodyObj,null)
 				assert.equal(bodyObj.method, "GET")
-				assert.equal(bodyObj.headers.host, "127.0.0.1:9990")
+				assert.equal(bodyObj.headers.host, "localhost:9991")
 				assert.deepEqual(bodyObj.query, {})
 				done()
 			}

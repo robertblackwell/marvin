@@ -3,6 +3,7 @@ var http = require("http")
 var EventEmitter = require('events').EventEmitter
 var util = require('util')
 var extend = util.inherits
+var net = require('net')
 var logger = console
 
 
@@ -30,6 +31,9 @@ function pipeAndCollectStreamContent(rStream, wStream, cb)
 	}
 }
 
+function tunnel(socket_1, socket_2){
+	
+}
 
 var MitmServer = module.exports = function MitmServer(options){
 	this.log = logger.log;
@@ -44,7 +48,30 @@ MitmServer.prototype.__proto__ =  EventEmitter.prototype;
 
 MitmServer.prototype.handleConnect = function(req, socket)
 {
-	this.log("MitmServer::handleConnect");
+	// this.log("MitmServer::handleConnect");
+	var tmp = req.url.split(":")
+	var targetHost = tmp[0];
+	var targetPort = tmp[1];
+	var socketToTarget = net.Socket()
+	// console.log("connectHandler ", targetPort, targetHost )
+	
+	socketToTarget.on('error', (err)=>{
+		req.socket.write("HTTP/1.1 404 Connection not established\r\n\r\n")
+		// req.end();
+		// socketToTarget.close()
+	})
+	req.socket.on('error', (err)=>{
+		// req.end();
+		// socketToTarget.close()
+	})
+	socketToTarget.connect(targetPort, targetHost, (err)=>{
+		req.socket.pipe(socketToTarget);
+		socketToTarget.pipe(req.socket);
+		req.socket.write("HTTP/1.1 200 Connection established \r\n\r\n")
+		this.emit('tunnel', {status: "OK", port: targetPort, host: targetHost})
+		
+	})
+
 }
 
 MitmServer.prototype.handleRequest = function(req, resp)
@@ -60,21 +87,38 @@ MitmServer.prototype.listen = function(proxyPort, proxyServername, cb){
 MitmServer.prototype.close = function(cb){
 	this.server.close(cb)
 }
+
 /**
-* Currently a dummy - in time this will allow us to select the content-type for which
-* we will collect the request/response body for monitoring.
-* Probably do not want to collect image/ video/ audio/ types of content
+* Determine what types of response content we want to collect and signal
+* on a finish event. The goal here is ONLY to prevent collecting into a buffer a 
+* large reponse body that we will probably never look at.
+* For example - Probably do not want to collect image/ video/ audio/ types of content
+* Put another way only text/*  and application/* will be collected
 */
 MitmServer.prototype.shouldCollectResponseBody = function(res /*IncomingMessage*/)
 {
+	var result = false;
+	var acceptableContent = [
+		RegExp(/^text\/.*$/), 
+		RegExp(/^application\/.*$/)
+	];
+	console.log("content-type", res.headers['content-type'])
 	if( res.headers['content-type'] === undefined ){
 		// console.log("shouldCollect there is NO content type")
-		
+		result = true;
 	}else{
+		var c_type = res.headers['content-type']
 		// console.log("shouldCollect content type is ", res.headers['content-type'])
-		
+		acceptableContent.forEach((re)=>{
+			// var re = new Regex(reStr)
+			console.log("matching loop", c_type, (c_type.match(re)!== null) )
+			if( c_type.match(re) !== null ){
+				result = true;
+			}
+		})
 	}
-	return true;
+	console.log("shouldCollectResponseBody", result)
+	return result;
 }
 MitmServer.prototype.getCollectableContentTypes = function()
 {
@@ -127,12 +171,20 @@ MitmServer.prototype.forward = function forward(req, resp)
 			resp.writeHead(targetServerResponse.statusCode, targetServerResponse.headers)
 			// forward the response body downstream
 			// and possibly collect the response body provided the content-type is appropriate
+			// do this here to ensure we dont try collecting the contents of very large
+			// response bodies
+			// other cleaning up of the request body and response body for display purposes
+			// can take place elsewhere
 			if( this.shouldCollectResponseBody(targetServerResponse) ){
 				pipeAndCollectStreamContent(targetServerResponse, resp, (content)=>{
 					targetServerResponse.rawBody = content; // a bit of a hack - add the full captured body dynamically to the response
 				})
 			}else{
-				pipeAndCollectStreamContent(targetServerResponse, resp, null)				
+				targetServerResponse.pipe(resp)
+				targetServerResponse.rawBody = new Buffer("")
+				// pipeAndCollectStreamContent(targetServerResponse, resp, (content)=>{
+				// 	targetServerResponse.rawBody = new Buffer("")
+				// })
 			}
 			resp.on('finish', ()=>{
 				// at this point the entire req/resp cycle is over so package it up 
