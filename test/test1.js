@@ -1,7 +1,7 @@
 var assert = require('assert');
 
 var CertStore = require('../src/certstore')
-
+var log = console.log;
 
 describe('getCert', function() {
 
@@ -13,21 +13,22 @@ describe('getCert', function() {
 	after(function() {
 	});
 
-	it('get CERT for whiteacorn', function(done) {
+	it('get CERT for localhost', function(done) {
 		var cdir = __dirname+"/testdata"
 		var caCert = cdir + "/cacert.pem"
 		var caKey = cdir + "/cakey.pem"
 		var cs = new CertStore({
 			certDir 	: cdir,
 			caCertPath  : caCert,
-			caKeyPath   : caKey
-		}, console.log)
-		cs.getCert("whiteacorn", function(err, c){
-			console.log("call back",err, c)
+			caKeyPath   : caKey,
+			log 		: function FRED(){}, 
+		})
+		cs.getCert("localhost", function(err, c){
+			log("call back",err, c)
 			assert.equal(err, null)
 			assert.notEqual(c, null)
-			console.log(c.key)
-			console.log(c.cert)
+			log(c.key)
+			log(c.cert)
 			done()
 		})
 		//done()
@@ -39,13 +40,14 @@ describe('getCert', function() {
 		var cs = new CertStore({
 			certDir 	: cdir,
 			caCertPath  : caCert,
-			caKeyPath   : caKey
-		}, console.log)
+			caKeyPath   : caKey,
+			log 		: function FRED(){}  
+		})
 		cs.getSecureContext("whiteacorn", function(err, ctx){
-			console.log("secureContext call back",err, ctx)
+			log("secureContext call back",err, ctx)
 			assert.equal(err, null)
 			assert.notEqual(ctx, null)
-			console.log(ctx)
+			log(ctx)
 			done()
 		})
 		//done()

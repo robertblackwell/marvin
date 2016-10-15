@@ -35,10 +35,34 @@ function tunnel(socket_1, socket_2){
 	
 }
 
+const default_options = {
+	response_content_to_capture :[	
+		RegExp(/^text\/.*$/), 
+		RegExp(/^application\/.*$/)
+	],
+	
+	/*
+	* https options control how the proxy handles CONNECT requests
+	* any CONNECT to one of the given ports is treated as a https proxy request
+	* if the hostname is NOT matched by on of the entries in the array of host regexs
+	* then an anonymous tunnel to established
+	* If a hotname IS matched then the traffic from the client is tunneled to the 
+	* backend https server and the request and response are captured 
+	*/
+	htts:{
+		ports: [443,9443], 	//ports that will trigger an https proxy
+		hosts: [/^.*$/],		// regex to identify hosts that should invoke https mitm
+	}
+}
+
 var MitmServer = module.exports = function MitmServer(options){
+	// this.options = {};
+	this.options = Object.assign(default_options, options)
+	console.log("here are the options",this.options)
 	this.log = logger.log;
 	this.collectableContentType = ["text","application"]
 	this.server = http.createServer();
+	this.slaveMaster = new SlaveMaster({})
 	this.server.on('request', this.handleRequest.bind(this));
 	this.server.on("connect", this.handleConnect.bind(this));
 	EventEmitter.call(this)
