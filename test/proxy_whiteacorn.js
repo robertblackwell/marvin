@@ -1,8 +1,9 @@
 var request = require('request')
-var Mitm 	= require("../src/MitmServer")
+var Mitm 	= require("../src/mitm-server")
 var assert 	= require("assert")
 var inspect = require("util").inspect
 var http 	= require("http")
+var Options = require("./helpers/config")
 
 
 
@@ -14,7 +15,7 @@ describe("a few simple tests with local whiteacorn", function(done){
 	var mitm;
 	
 	before(function(done){
-		mitm = new Mitm({})
+		mitm = new Mitm(Options.options)
 		mitm.listen(4001, "127.0.0.1")
 		done()
 	})

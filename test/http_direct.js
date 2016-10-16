@@ -1,11 +1,9 @@
 var request = require('request')
-var Mitm 	= require("../src/MitmServer")
+var Mitm 	= require("../src/mitm-server")
 var assert 	= require("assert")
 var inspect = require("util").inspect
 var http 	= require("http")
-// var Remote = require("./simpleremote")
 var dispatcher = require('httpdispatcher')
-
 var done = function(){}
 
 dispatcher.onPost("/test", function(req, resp){

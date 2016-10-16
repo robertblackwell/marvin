@@ -1,13 +1,12 @@
 var url = require('url')
 var request = require('request')
-var Mitm 	= require("../src/MitmServer")
+var Mitm 	= require("../src/mitm-server")
 var assert 	= require("assert")
 var util	= require("util")
 var fs = require('fs')
 var inspect = require("util").inspect
 var http 	= require("http")
 var https 	= require("https")
-var dispatcher = require('httpdispatcher')
 var _ = require("underscore")
 
 const options = {
