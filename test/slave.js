@@ -68,7 +68,7 @@ describe('test slavemaster', function() {
 		// m = new SlaveMaster(slaveMasterOptions)
 		// m = new SlaveMaster({certStore : cert_store_options, log: function noLog(){}})
 		// m = new SlaveMaster(opt.slaveMaster)
-		m = new SlaveMaster(Options.mitm.slaveMaster)
+		m = new SlaveMaster(Options)
 		done()
 			
 	});

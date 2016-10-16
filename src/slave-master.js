@@ -55,6 +55,7 @@ class HttpsSlaveMaster
 			sni: true,
 			log: console.log
 		})
+		console.log(options)
 		this.certStore = new CertStore(certStoreOptions)
 		this.log = this.options.log;
 		
