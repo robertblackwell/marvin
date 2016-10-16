@@ -1,6 +1,6 @@
 var assert = require('assert');
 
-var CertStore = require('../src/certstore')
+var CertStore = require('../src/cert-store')
 var log = console.log;
 
 describe('getCert', function() {
@@ -24,11 +24,14 @@ describe('getCert', function() {
 			log 		: function FRED(){}, 
 		})
 		cs.getCert("localhost", function(err, c){
-			log("call back",err, c)
+			log("call back",err, typeof c)
 			assert.equal(err, null)
 			assert.notEqual(c, null)
-			log(c.key)
-			log(c.cert)
+			assert.notEqual(c.key === undefined, true)
+			assert.notEqual(c.cert === undefined, true)
+			assert.notEqual(c.ca === undefined, true)
+			// log(c.key)
+			// log(c.cert)
 			done()
 		})
 		//done()
@@ -44,10 +47,12 @@ describe('getCert', function() {
 			log 		: function FRED(){}  
 		})
 		cs.getSecureContext("whiteacorn", function(err, ctx){
-			log("secureContext call back",err, ctx)
+			log("secureContext call back",err, typeof ctx)
 			assert.equal(err, null)
 			assert.notEqual(ctx, null)
-			log(ctx)
+			assert.equal(ctx.constructor.name, "SecureContext")
+			assert.equal(ctx.context === undefined, false)
+			// log(require('util').inspect(ctx))
 			done()
 		})
 		//done()

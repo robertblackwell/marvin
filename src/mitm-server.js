@@ -37,7 +37,7 @@ function tunnel(socket_1, socket_2){
 }
 
 const default_options = {
-	response_content_to_capture :[	
+	capture :[	
 		RegExp(/^text\/.*$/), 
 		RegExp(/^application\/.*$/)
 	],
@@ -50,22 +50,24 @@ const default_options = {
 	* If a hotname IS matched then the traffic from the client is tunneled to the 
 	* backend https server and the request and response are captured 
 	*/
-	htts:{
-		ports: [443,9443], 	//ports that will trigger an https proxy
-		hosts: [/^.*$/],		// regex to identify hosts that should invoke https mitm
-	}
+	htts_ports	: [443,9443], 	//ports that will trigger an https proxy
+	https_hosts	: [/^.*$/],		// regex to identify hosts that should invoke https mitm
+
 }
 
 var MitmServer = module.exports = function MitmServer(options){
 	// this.options = {};
 	this.options = Object.assign(default_options, options)
-	console.log("here are the options",this.options)
+	this.acceptableContent = this.options.capture;
 	this.log = logger.log;
 	this.collectableContentType = ["text","application"]
+	
 	this.server = http.createServer();
-	this.slaveMaster = new SlaveMaster(this.options.slaveMaster)
+	this.slaveMaster = new SlaveMaster(this.options)
 	this.server.on('request', this.handleRequest.bind(this));
 	this.server.on("connect", this.handleConnect.bind(this));
+	// console.log(options)
+	// require('process').exit()
 	EventEmitter.call(this)
 	
 }
@@ -123,18 +125,13 @@ MitmServer.prototype.close = function(cb){
 MitmServer.prototype.shouldCollectResponseBody = function(res /*IncomingMessage*/)
 {
 	var result = false;
-	var acceptableContent = [
-		RegExp(/^text\/.*$/), 
-		RegExp(/^application\/.*$/)
-	];
-	// console.log("content-type", res.headers['content-type'])
 	if( res.headers['content-type'] === undefined ){
 		// console.log("shouldCollect there is NO content type")
 		result = true;
 	}else{
 		var c_type = res.headers['content-type']
 		// console.log("shouldCollect content type is ", res.headers['content-type'])
-		acceptableContent.forEach((re)=>{
+		this.acceptableContent.forEach((re)=>{
 			// var re = new Regex(reStr)
 			// console.log("matching loop", c_type, (c_type.match(re)!== null) )
 			if( c_type.match(re) !== null ){

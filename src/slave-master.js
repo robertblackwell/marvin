@@ -1,4 +1,4 @@
-var CertStore 	= require("./certstore")
+var CertStore 	= require("./cert-store")
 var https 		= require('https')
 var fs 			= require('fs')
 var _ 			= require("underscore")
@@ -48,17 +48,13 @@ function hostCert(options, hostname){
 class HttpsSlaveMaster
 {
 	constructor(options){
-		var certStoreOptions = options.certStore
-		options.cert_store = undefined;
 		this.options = {};
 		_.defaults(this.options, options, {
 			sni: true,
 			log: console.log
 		})
-		console.log(options)
-		this.certStore = new CertStore(certStoreOptions)
+		this.certStore = new CertStore(options)
 		this.log = this.options.log;
-		
 		this.sni = (this.options.sni !== undefined && this.options.sni === true)
 		
 		this.servers = {};

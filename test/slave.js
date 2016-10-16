@@ -6,7 +6,7 @@ var tls = require('tls')
 var _ = require("underscore")
 var path = require('path')
 
-var CertStore = require('../src/certstore')
+var CertStore = require('../src/cert-store')
 var SlaveMaster = require("../src/slave-master")
 var Options	= require("./helpers/config")
 var mitmOptions = Options.mitm;
@@ -68,7 +68,7 @@ describe('test slavemaster', function() {
 		// m = new SlaveMaster(slaveMasterOptions)
 		// m = new SlaveMaster({certStore : cert_store_options, log: function noLog(){}})
 		// m = new SlaveMaster(opt.slaveMaster)
-		m = new SlaveMaster(Options)
+		m = new SlaveMaster(Options.options)
 		done()
 			
 	});

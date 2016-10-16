@@ -1,32 +1,15 @@
 var url = require('url')
 var request = require('request')
-var Mitm 	= require("../src/MitmServer")
+var Mitm 	= require("../src/mitm-server")
 var assert 	= require("assert")
 var util	= require("util")
 var inspect = require("util").inspect
 var http 	= require("http")
 var fs 		= require("fs")
-var dispatcher = require('httpdispatcher')
+
 var _ = require("underscore")
 var TestServers = require("../test/helpers/test-servers")
 var Options	= require("./helpers/config")
-var mitmOptions = Options.mitm;
-
-// var cdir = __dirname+"/testdata"
-// var caCert = cdir + "/cacert.pem"
-// var caKey = cdir + "/cakey.pem"
-// var certificatePath = __dirname + "/testdata/cacert.pem";
-// var ca = fs.readFileSync(certificatePath, {encoding: 'utf-8'});
-//
-// var cert_store_opts = {
-//  		certDir 	: cdir,
-//  		caCertPath  : caCert,
-//  		caKeyPath   : caKey,
-// 		log : function noLog(){}
-// }
-// var mitmOptions = {cert_store: cert_store_opts, log:function noLog(){}}
-
-var mitmOptions = Options.mitm;
 
 var createTestHttp = TestServers.createHttp
 
@@ -67,7 +50,7 @@ describe("a few simple tests with a node http server so that we can test differe
 	before(function(done){
 		remote = createTestHttp(definePaths)
 		remote.listen(9990, "127.0.0.1", function(){
-			mitm = new Mitm(Options.mitm)
+			mitm = new Mitm(Options.options)
 			mitm.listen(4001, "127.0.0.1", function(){
 				done()
 			})

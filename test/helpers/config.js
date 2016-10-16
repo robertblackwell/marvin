@@ -22,7 +22,7 @@ var flatOptions = {
 	capture: [
 		RegExp(/^text\/.*$/), 
 		RegExp(/^application\/.*$/)				
-	]
+	],
 
 	//
 	// settings for monitoring https traffic
@@ -77,7 +77,7 @@ var opt = {
 	htts:{
 		ports: [443,9443], 	//ports that will trigger an https proxy
 		hosts: [/^.*$/],		// regex to identify hosts that should invoke https mitm
-	}
+	},
 	log : function noLog(){}
 	
 }
@@ -88,6 +88,7 @@ var mitmOptions = opt;
 
 
 module.exports = {
+	options		: flatOptions,
 	mitm 		: mitmOptions,
 	slaveMaster	: slaveMasterOptions,
 	certStore	: certStoreOptions,
