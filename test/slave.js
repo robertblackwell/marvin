@@ -8,25 +8,54 @@ var path = require('path')
 
 var CertStore = require('../src/certstore')
 var SlaveMaster = require("../src/slave-master")
-var cdir = __dirname+"/testdata"
-var caCert = cdir + "/cacert.pem"
-var caKey = cdir + "/cakey.pem"
+var Options	= require("./helpers/config")
+var mitmOptions = Options.mitm;
+var slaveMasterOptions = Options.slaveMaster
+var certStoreOptions = Options.certStore
+var ca = Options.ca;
+
+//
+// var cdir = __dirname+"/testdata"
+// var caCert = cdir + "/cacert.pem"
+// var caKey = cdir + "/cakey.pem"
+
 var hostname = "localhost";
-var hostname_cert = function(hostname){return  cdir + "/"+hostname+"-cert.pem";}
-var hostname_key  = function(hostname){ return cdir + "/"+hostname+"-key.pem";}
 
-var certificatePath = __dirname + "/testdata/cacert.pem";
-var ca = fs.readFileSync(certificatePath, {encoding: 'utf-8'});
+// var hostname_cert = function(hostname){return  cdir + "/"+hostname+"-cert.pem";}
+// var hostname_key  = function(hostname){ return cdir + "/"+hostname+"-key.pem";}
 
-console.log("the file name is : ",path.basename(__filename))
+// var certificatePath = __dirname + "/testdata/cacert.pem";
+// var ca = fs.readFileSync(certificatePath, {encoding: 'utf-8'});
+//
+// var cert_store_options = {
+//  		certDir 	: cdir,
+//  		caCertPath  : caCert,
+//  		caKeyPath   : caKey,
+// 		log : function noLog(){}
+// }
+// var smOptions = {
+// 	certStore : cert_store_options,
+// 	log : function noLog(){}
+// }
+// var mOptions = {
+// 	slaveMaster : smOptions,
+// 	log : function noLog(){}
+// }
+//
+// var opt = {
+// 	slaveMaster : {
+// 		certStore : {
+// 	 		certDir 	: cdir,
+// 	 		caCertPath  : caCert,
+// 	 		caKeyPath   : caKey,
+// 			log : function noLog(){}
+// 		},
+// 		log : function noLog(){}
+// 	},
+// 	log : function noLog(){}
+//
+// }
 
-var cert_store_opts = {
- 		certDir 	: cdir,
- 		caCertPath  : caCert,
- 		caKeyPath   : caKey,
-		log : function noLog(){}
-}
-			
 describe('test slavemaster', function() {
 
 	var m;
@@ -36,7 +65,10 @@ describe('test slavemaster', function() {
 		// 		done()
 		// 	})
 		// })
-		m = new SlaveMaster({cert_store: cert_store_opts, log:function noLog(){}})
+		// m = new SlaveMaster(slaveMasterOptions)
+		// m = new SlaveMaster({certStore : cert_store_options, log: function noLog(){}})
+		// m = new SlaveMaster(opt.slaveMaster)
+		m = new SlaveMaster(Options.mitm.slaveMaster)
 		done()
 			
 	});

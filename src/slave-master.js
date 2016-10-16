@@ -48,8 +48,7 @@ function hostCert(options, hostname){
 class HttpsSlaveMaster
 {
 	constructor(options){
-		
-		var certStoreOptions = options.cert_store
+		var certStoreOptions = options.certStore
 		options.cert_store = undefined;
 		this.options = {};
 		_.defaults(this.options, options, {

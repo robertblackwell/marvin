@@ -4,6 +4,7 @@ var EventEmitter = require('events').EventEmitter
 var util = require('util')
 var extend = util.inherits
 var net = require('net')
+var SlaveMaster = require("./slave-master")
 var logger = console
 
 
@@ -62,7 +63,7 @@ var MitmServer = module.exports = function MitmServer(options){
 	this.log = logger.log;
 	this.collectableContentType = ["text","application"]
 	this.server = http.createServer();
-	this.slaveMaster = new SlaveMaster({})
+	this.slaveMaster = new SlaveMaster(this.options.slaveMaster)
 	this.server.on('request', this.handleRequest.bind(this));
 	this.server.on("connect", this.handleConnect.bind(this));
 	EventEmitter.call(this)
@@ -126,7 +127,7 @@ MitmServer.prototype.shouldCollectResponseBody = function(res /*IncomingMessage*
 		RegExp(/^text\/.*$/), 
 		RegExp(/^application\/.*$/)
 	];
-	console.log("content-type", res.headers['content-type'])
+	// console.log("content-type", res.headers['content-type'])
 	if( res.headers['content-type'] === undefined ){
 		// console.log("shouldCollect there is NO content type")
 		result = true;
@@ -135,13 +136,13 @@ MitmServer.prototype.shouldCollectResponseBody = function(res /*IncomingMessage*
 		// console.log("shouldCollect content type is ", res.headers['content-type'])
 		acceptableContent.forEach((re)=>{
 			// var re = new Regex(reStr)
-			console.log("matching loop", c_type, (c_type.match(re)!== null) )
+			// console.log("matching loop", c_type, (c_type.match(re)!== null) )
 			if( c_type.match(re) !== null ){
 				result = true;
 			}
 		})
 	}
-	console.log("shouldCollectResponseBody", result)
+	// console.log("shouldCollectResponseBody", result)
 	return result;
 }
 MitmServer.prototype.getCollectableContentTypes = function()
