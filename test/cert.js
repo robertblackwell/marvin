@@ -14,7 +14,7 @@ describe('getCert', function() {
 	});
 
 	it('get CERT for localhost', function(done) {
-		var cdir = __dirname+"/testdata"
+		var cdir = __dirname+"/certificate-store"
 		var caCert = cdir + "/cacert.pem"
 		var caKey = cdir + "/cakey.pem"
 		var cs = new CertStore({
@@ -37,14 +37,14 @@ describe('getCert', function() {
 		//done()
 	});
 	it('get secureContext for whiteacorn', function(done) {
-		var cdir = __dirname+"/testdata"
+		var cdir = __dirname+"/certificate-store"
 		var caCert = cdir + "/cacert.pem"
 		var caKey = cdir + "/cakey.pem"
 		var cs = new CertStore({
 			certDir 	: cdir,
 			caCertPath  : caCert,
 			caKeyPath   : caKey,
-			log 		: function FRED(){}  
+			log 		: function FRED(){}
 		})
 		cs.getSecureContext("whiteacorn", function(err, ctx){
 			log("secureContext call back",err, typeof ctx)

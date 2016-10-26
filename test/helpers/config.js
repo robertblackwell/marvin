@@ -3,10 +3,10 @@
 */
 var fs = require('fs')
 var path = require('path')
-var cdir = path.resolve(__dirname+"/../testdata")
+var cdir = path.resolve(__dirname+"/../certificate-store")
 var caCert = cdir + "/cacert.pem"
 var caKey = cdir + "/cakey.pem"
-var certificatePath = path.resolve(__dirname + "/../testdata/cacert.pem");
+var certificatePath = path.resolve(__dirname + "/../certificate-store/cacert.pem");
 var ca = fs.readFileSync(certificatePath, {encoding: 'utf-8'});
 
 var flatOptions = {

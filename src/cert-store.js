@@ -5,8 +5,6 @@ var fs 		= require('fs')
 var tls 	= require('tls')
 var _ 		= require("underscore")
 
-
-
 /**
 *	Arguments
 *		options : An options object with the following properties
@@ -19,6 +17,14 @@ var _ 		= require("underscore")
 *
 *			log :      
 */
+function testFileExists(filePath){
+	try{
+		var s = fs.statSync(filePath)
+		return true;
+	}catch(e){
+		return false;
+	}
+}
 module.exports = class CertStore {
 	
 	constructor(options) {	
@@ -26,9 +32,13 @@ module.exports = class CertStore {
 		_.defaults(this.options, options, {
 			log: function nolog(){}
 		})
+
 		this.dir = options.certDir
+		if( ! testFileExists(this.options.certDir) ) throw Error("certDir " + this.options.certDir + " does not exist")
 		this.caCert = options.caCertPath
+		if( ! testFileExists(this.options.caCertPath) ) throw Error("caCertPath " + this.options.caCertPath + " does not exist")
 		this.caKey = options.caKeyPath
+		if( ! testFileExists(this.options.caKeyPath) ) throw Error("caKeyPath " + this.options.caKeyPath + " does not exist")
 		this.cache = {}
 		this.queued = {}
 		mkdirp.sync(options.certDir)
@@ -64,19 +74,35 @@ module.exports = class CertStore {
 			cb(null, ctx)
 		})	
 	}
+	caPath(){
+		return path.resolve(this.dir, "cacert.pem")
+	}
+	hostKeyPath(hostname){
+		return path.resolve(this.hostDir(hostname), "key.pem")		
+	}
+	hostCsrPath(hostname){
+		return path.resolve(this.hostDir(hostname), hostname + ".csr")
+	}
+	hostCertPath(hostname){
+		return path.resolve(this.hostDir(hostname), "cert.pem")
+	}
+	hostDir(hostname){
+		// return this.dir;
+		return path.resolve(this.dir, hostname)
+	}
 	loadCert( hostname, cb) {
-		var store = this
-		var keyPath = path.resolve(this.dir, hostname + '-key.pem')
-		var certPath = path.resolve(this.dir, hostname + '-cert.pem')
-		var caPath = path.resolve(this.dir, "cacert.pem")
+		var store = this;
+		var keyPath = this.hostKeyPath(hostname)
+		var certPath = this.hostCertPath(hostname)
+		var caPath = this.caPath()
 
 		this.log("keyPath: ", keyPath)
 		this.log("certPath: ", certPath)
 
 		var cache = this.cache
 
-		if (fs.existsSync(certPath) && fs.existsSync(keyPath)) {
-		return readCert()
+		if (testFileExists(certPath) && testFileExists(keyPath)) {
+			return readCert()
 		}
 
 		this.makeCert(hostname, readCert)
@@ -89,6 +115,7 @@ module.exports = class CertStore {
 				fs.readFile(certPath, (err, cert)=> {
 					if (err) return cb(err, null)
 					fs.readFile(caPath, (err, cacert)=>{
+						if (err) return cb(err, null)
 						cache[hostname] = 	{key: key, cert: cert, ca: cacert}
 						cb(null, cache[hostname])
 					})
@@ -99,9 +126,11 @@ module.exports = class CertStore {
 
 	makeCert( hostname, done) {
 		this.log('info', 'creating certs for ' + hostname)
-		var keyPath = path.resolve(this.dir, hostname + '-key.pem')
-		var csrPath = path.resolve(this.dir, hostname + '.csr')
-		var certPath = path.resolve(this.dir, hostname + '-cert.pem')
+		var keyPath = this.hostKeyPath(hostname)
+		var certPath = this.hostCertPath(hostname)
+		var caPath = this.caPath()
+		var csrPath = this.hostCsrPath(hostname)
+		mkdirp.sync(this.hostDir(hostname))
 		var keyCmd = 'openssl genrsa -out ' + keyPath + ' 1024'
 		var csrCmd = 'openssl req -new -key ' + keyPath + ' -out ' + csrPath +
 			'  -nodes -subj "/C=US/ST=OR/L=PDX/O=NR/CN=' + hostname + '"'
