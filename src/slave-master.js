@@ -45,12 +45,16 @@ function hostCert(options, hostname){
 *	In both cases this class relies on an instance of the CertStore class to manage and when necessary
 *	create appropriate signed certificates. See CertStore for more info
 */
-class HttpsSlaveMaster
-{
+class HttpsSlaveMaster { //base class
+	
+	/**
+	* Factory 
+	*/
 	static createHttpsSlaveMaster(options, handler){
 		let m =  _createHttpsSlaveMaster(options, handler);
 		return m;
 	}
+	
 	constructor(options, handler){
 		this.options = {};
 		_.defaults(this.options, options, {
@@ -78,110 +82,8 @@ class HttpsSlaveMaster
 		resp.writeHead(200)
 		resp.end("OK got here")						
 	}
-	// sniGetPortForHost(hostname, cb)	{
-	// 	var slave;
-	// 	this.log("sniGetPortForHost")
-	//
-	// 	if( this.slave === undefined ){
-	// 		this.pending.push(cb);
-	// 		if( this.pending.length != 1 ){
-	// 			this.log("getPort already pending ", this.pending.length)
-	// 			return;
-	// 		}
-	//
-	// 		var server_options = {
-	// 			SNICallback : (servername, cb)=>{
-	// 				this.log("SNICallback : ", servername)
-	// 				this.certStore.getSecureContext(servername, (err, ctx)=>{
-	// 					this.log("snicallback cb",err)
-	// 					cb(err, ctx)
-	// 				})
-	// 			}
-	// 		}
-	// 		slave = https.createServer(server_options, this.forwardRequest.bind(this));
-	// 		// 	(req, resp)=>{
-	// 		// 	this.log("HttpsSlave server got a request")
-	// 		// 	resp.writeHead(200)
-	// 		// 	resp.end("OK got here")
-	// 		// })
-	// 		slave.listen(0, "localhost",()=>{
-	// 			this.log("server listen port : ", slave.address().port)
-	// 			slave.port = slave.address().port
-	// 			// Now that we have a port hook slave into this. This signals
-	// 			// that the slave is established
-	// 			this.slave = slave
-	// 			var callbacks = this.pending;
-	// 			this.pending = [];
-	// 			this.log("drain callbacks", callbacks.length)
-	// 			for(cb of callbacks ){
-	// 				cb(this.slave.port)
-	// 			}
-	// 		})
-	// 	}else{
-	// 		this.log("sniGetPort - reusing", this.slave.port)
-	// 		cb(this.slave.port)
-	// 	}
-	// }
-	// serverPerHostGetPortForHost(hostname, cb){
-	// 	this.log("serverPerHostGetPortForHost")
-	// 	var port;
-	// 	var serverOptions;
-	//
-	// 	if( this.servers[hostname] === undefined){
-	// 		this.log("Creating server for", hostname)
-	// 		if( this.pending[hostname] === undefined ){
-	// 			this.pending[hostname] = [cb];
-	// 		}else{
-	// 			this.pending[hostname].push(cb);
-	// 			return;
-	// 		}
-	// 		this.log("getPortForHost: ", hostname)
-	// 		var svr_options = {}
-	//
-	// 		this.certStore.loadCert(hostname, (err, ctx)=>{
-	// 			this.log("cert: ", ctx)
-	// 			var server = https.createServer(ctx, this.forwardRequest.bind(this))
-	//
-	// 			// 	(req, resp)=>{
-	// 			// 	this.log("HttpsSlave server got a request")
-	// 			// 	resp.writeHead(200)
-	// 			// 	resp.end("OK got here")
-	// 			// 	// forward(req, resp)
-	// 			// })
-	// 			server.listen(0, "localhost", ()=>{
-	// 				this.log("server listen port : ", server.address().port)
-	// 				server.port = server.address().port
-	// 				this.servers[hostname] = server;
-	// 				var callbacks = this.pending[hostname]
-	// 				this.pending[hostname] = undefined;
-	// 				this.log("drain callbacks", callbacks.length)
-	// 				for(cb of callbacks){
-	// 					cb(server.port)
-	// 				}
-	// 			})
-	// 		})
-	// 	}else{
-	// 		this.log("Reusing server for", hostname)
-	// 		port = this.servers[hostname].address().port;
-	// 		cb(port)
-	// 	}
-	// }
-	// getPortForHost(hostname, cb){
-	// 	if(this.sni)
-	// 		this.sniGetPortForHost(hostname, cb);
-	// 	else
-	// 		this.serverPerHostGetPortForHost(hostname, cb)
-	// }
-	// close(){
-	// 	if(this.options.sni){
-	// 		this.slave.close()
-	// 	}else{
-	// 		for(p in this.servers ){
-	// 			p.close()
-	// 		}
-	// 	}
-	// }
 }
+
 class SniSlaveMaster extends HttpsSlaveMaster
 {
 	constructor(options, handler){
