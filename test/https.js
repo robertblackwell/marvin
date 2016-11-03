@@ -1,106 +1,136 @@
-var url = require('url')
-var request = require('request')
-var Mitm 	= require("../src/mitm-server")
-var assert 	= require("assert")
-var util	= require("util")
-var fs = require('fs')
-var inspect = require("util").inspect
-var http 	= require("http")
-var https 	= require("https")
-var _ = require("underscore")
+//
+// This file tests the functioning of the test https server by 
+//	-	first accessing it directly
+//	-	then accessing it through the proxy but with the server port selected to ensure
+//		an anonymous tunnel is used
+//	-	then through the proxy with a server port of 9443 to force the use of a slave https server, this is done twice
+//		-	once with Options.sni = false to force a slave server for each hostname
+//		-	once with Options.sni = true to for the use of SniSlaveMaster
+//		In both cases the proxy leaves markers in the req/resp and the on 'finish' tReq and tResp objects
+//		that passage through the forwarding agent and correct SlaveMaster can be tested
+//
+const url = require('url')
+const request = require('request')
+const Mitm 	= require("../src/mitm-server")
+const assert 	= require("assert")
+const util	= require("util")
+const fs = require('fs')
+const inspect = require("util").inspect
+const http 	= require("http")
+const https 	= require("https")
+const _ = require("underscore")
 
-var TestServers = require("../test/helpers/test-servers")
-var TestServers = require("../test/helpers/test-servers")
-var Options	= require("./helpers/config")
+const TestServers = require("../test/helpers/test-servers")
+const MitmReportType = require("../src/mitm-report-type")
+const MitmReport = require("../src/mitm-report")
+//
+// set up logging for this set of tests
+//
+const Logger = require("../src/logger")
+Logger.disable()
+const verbose = false;
+const mylog = (verbose)? console : {log: function noLog(){}}
 
-var createServer = TestServers.createHttps
+// constiables to control the tests
+let Options	= require("./helpers/config")
+// let remote = null;
+// let mitm = null;
 
-function definePaths(dispatcher)
-{
-	// Test GET with query string
-	dispatcher.onGet("/test", function(req, resp){
-		// console.log("GET path /test")
-		var bObj = {
-			protocol: req.protocol,
-			url 	: req.url,
-			method	: req.method,
-			query	: url.parse(req.url, true).query,
-			body	: req.body,
-			headers	: req.headers
-	    }
-		resp.writeHead(200, {'Content-type' : 'text/plain'})
-		resp.write(JSON.stringify(bObj))
-		resp.end()		
-	})
-	// Test POST with body
-	dispatcher.onPost("/test", function(req, resp){
-		// console.log("PUT path /test")
-		var bObj = {
-		      protocol: req.protocol,
-		      method:   req.method,
-		      body:     req.body,
-		      headers:  req.headers
-	    }
-		resp.writeHead(200, {'Content-type' : 'text/plain'})
-		resp.write(JSON.stringify(bObj))
-		resp.end()
-	})		
+//helpers
+function startServers(serverPort, proxyPort, Options, cb){
+	let remote = null;
+	let mitm = null;
+	remote = TestServers.createHttps()
+	remote.listen(serverPort, "localhost", function(){
+		mitm = new Mitm(Options)
+		mitm.listen(proxyPort, "127.0.0.1", function(){
+			cb(remote, mitm)
+		})
+	})	
 }
-describe("mikey mouse", function(done){
-	var mitm;
-	var remote;
+function closeServers(remote, mitm, done){
+	remote.close(function(){
+		mitm.close(()=>{
+			done()
+		})
+	})	
+}
+function testRequestViaProxy(done, serverPort, proxyPort, mitm, mitmText, slaveText){
+	var certificatePath = __dirname + "/helpers/certs/ca-cert.pem";
+	var ca = fs.readFileSync(certificatePath, {encoding: 'utf-8'});
+	mitm.on('finish', (tx)=>{
+		console.log(tx)
+		if( tx.type === MitmReportType.HTTPS_TUNNEL){
+			console.log("ITS A TUNNEL")
+			return;
+		}
+			
+		mylog.log("========================================================================")
+		mylog.log("https.js::onFinish::req::headers", tx.request.headers  )
+		mylog.log("https.js::onFinish::req::headers[slave]", tx.request.headers['slave']  )
+		if( slaveText !== undefined ) assert.equal(tx.request.headers['slave'], slaveText)
+		mylog.log("https.js::onFinish::req::body", tx.request.rawBody )
+		mylog.log("https.js::onFinish::resp::headers", tx.response.headers )
+		mylog.log("https.js::onFinish::resp::headers[slave]", tx.response.headers['slave'] )
+		mylog.log("https.js::onFinish::resp::body", tx.response.rawBody )
+		mylog.log("========================================================================")
+	})
+	request({
+		tunnel : true,
+		method : "GET",
+	    url		: 'https://localhost:'+serverPort+"/test",
+	    proxy	: 'http://localhost:' + proxyPort,
+		rejectUnauthorized: false,
+		ca: ca
+	  },function( err, res, body)
+		{
+			if (err) {
+				console.log("simple proxy - got error", err)
+				throw err;
+				done();
+			}
+			mylog.log("========================================================================")
+			mylog.log("https.js::Response::statusCode", res.statusCode)
+			mylog.log("https.js::Response::headers", res.headers)
+			mylog.log("https.js::Response::body", body)
+			assert.equal(res.statusCode, 200) // successful request
+			var bodyObj = JSON.parse(body)
+			mylog.log("https.js::Response::bodyObj", bodyObj)
+			mylog.log("========================================================================")
+			assert.notEqual(bodyObj,null)
+			assert.equal(bodyObj.method, "GET")
+			assert.equal(bodyObj.headers.host, "localhost:"+serverPort)
+			assert.equal(bodyObj.headers.mitm, mitmText) //prove it went through proxy
+			assert.equal(bodyObj.headers.slave, slaveText) //prove it went through proxy
+			assert.deepEqual(bodyObj.query, {})
+			done()
+		}
+	);
+}
+
+describe("direct and proxy access to https test server via tunnel", function(done){
+	const proxyPort = 4001
+	const serverPort = 9991
+	let remote = null;
+	let mitm = null;
 
 	before(function(done){
-		remote = TestServers.createHttps({}, definePaths)
-		remote.listen(9991, "localhost", function(){
-			mitm = new Mitm(Options.options)
-			mitm.listen(4001, "127.0.0.1", function(){
-				done()
-			})
+		startServers(serverPort, proxyPort, Options, (r,m)=>{
+			remote = r;
+			mitm = m;
+			done()
 		})
 	})
 	after(function(done){
-		remote.close(function(){
-			mitm.close(()=>{
-				done()			
-			})
-		})
+		closeServers(remote, mitm, done)
 	})
-	/* this was only an initial experiment to gt an https server working - using raw https.request is too verbose*/
-	// it("https.request", function(done){
-	// 	// this is actually too complicated
-	// 	var certificatePath = __dirname + "/helpers/certs/ca-cert.pem";
-	// 	var ca = fs.readFileSync(certificatePath, {encoding: 'utf-8'});
-	// 	var req = https.request({
-	// 		host: 'localhost',
-	// 		port: 9991,
-	// 		path: '/test',
-	// 		ca: ca,
-	// 		method: 'GET',
-	// 		// rejectUnauthorized: false,
-	// 		// requestCert: true,
-	// 		// agent: false
-	//     },function(res){
-	//     	console.log("GOT A RESP")
-	// 		res.on('data', function(ck){
-	// 			console.log(ck.toString())
-	// 		})
-	// 		res.on('end', function(){
-	// 			done()
-	// 		})
-	//     })
-	// 	req.on('error',(err)=>{
-	// 		console.log("got error", err)
-	// 		done()
-	// 	}).end()
-	// })
 
-	it("https.request", function(done){
+	it("https.request - direct to test server", function(done){
 		var certificatePath = __dirname + "/helpers/certs/ca-cert.pem";
 		var ca = fs.readFileSync(certificatePath, {encoding: 'utf-8'});
 		request({
 			method: "GET",
-			url : "https://localhost:9991/test?var1=value1",
+			url : "https://localhost:"+serverPort+"/test?var1=value1",
 			ca : ca,
 		}, function(err, res, body){
 			//
@@ -113,35 +143,13 @@ describe("mikey mouse", function(done){
 		})
 
 	})
-})
-
-describe("a few simple tests with a node http server so that we can test different methods and body", function(done){
-	var mitm;
-	var remote;
-
-	before(function(done){
-		remote = TestServers.createHttps({}, definePaths)
-		remote.listen(9991, "localhost", function(){
-			mitm = new Mitm({})
-			mitm.listen(4001, "127.0.0.1", function(){
-				done()
-			})
-		})
-	})
-	after(function(done){
-		remote.close(function(){
-			mitm.close(()=>{
-				done()			
-			})
-		})
-	})
 
 	it("direct GET request to test server - no query string", function(done){
 		var certificatePath = __dirname + "/helpers/certs/ca-cert.pem";
 		var ca = fs.readFileSync(certificatePath, {encoding: 'utf-8'});
 		request({
 			method: "GET",
-		    url		: 'https://localhost:9991/test',
+		    url		: 'https://localhost:'+serverPort+'/test',
 			ca : ca
 		  },function( err, res, body)
 			{
@@ -154,137 +162,71 @@ describe("a few simple tests with a node http server so that we can test differe
 				var bodyObj = JSON.parse(body)
 				assert.notEqual(bodyObj,null)
 				assert.equal(bodyObj.method, "GET")
-				assert.equal(bodyObj.headers.host, "localhost:9991")
+				assert.equal(bodyObj.headers.host, "localhost:"+serverPort)
 				assert.deepEqual(bodyObj.query, {})
+				
 				done()
 			}
 		);
 	})
-//
-	it("proxy GET request to test server - no query string", function(done){
-		var certificatePath = __dirname + "/helpers/certs/ca-cert.pem";
-		var ca = fs.readFileSync(certificatePath, {encoding: 'utf-8'});
-		request({
-			tunnel : true,
-			method : "GET",
-		    url		: 'https://localhost:9991/test',
-		    proxy	: 'http://localhost:' + 4001,
-			ca: ca
-		  },function( err, res, body)
-			{
-				if (err) {
-					console.log("simple proxy - got error", err)
-					throw err;
-					done();
-				}
-				assert.equal(res.statusCode, 200) // successful request
-				var bodyObj = JSON.parse(body)
-				assert.notEqual(bodyObj,null)
-				assert.equal(bodyObj.method, "GET")
-				assert.equal(bodyObj.headers.host, "localhost:9991")
-				assert.deepEqual(bodyObj.query, {})
-				done()
-			}
-		);
-	})
-	// it("proxy GET request to test server - with query string", function(done){
-	// 	request({
-	// 	    // tunnel: true,
-	// 		method	:"GET",
-	// 	    url		: 'http://127.0.0.1:9990/test?var1=value1&var2=value2',
-	// 	    proxy	: 'http://localhost:' + 4001,
-	// 	  },function( err, res, body)
-	// 		{
-	// 			if (err) {
-	// 				console.log("simple proxy - got error", err)
-	// 				throw err;
-	// 				done();
-	// 			}
-	// 			assert.equal(res.statusCode, 200) // successful request
-	// 			var bodyObj = JSON.parse(body)
-	// 			assert.notEqual(bodyObj,null)
-	// 			assert.equal(bodyObj.method, "GET")
-	// 			assert.equal(bodyObj.headers.host, "127.0.0.1:9990")
-	// 			assert.equal(bodyObj.query.var1, "value1")
-	// 			done()
-	// 		}
-	// 	);
-	// })
-	// it("direct POST request to test server - with body", function(done){
-	// 	var bodyText = "This is some BODY text";
-	// 	request({
-	// 		method: "POST",
-	// 	    url: 'http://127.0.0.1:9990/test',
-	// 		body: bodyText
-	// 	  }
-	// 	  ,function( err, res, body)
-	// 		{
-	// 			if (err) {
-	// 				console.log("simple proxy - got error", err)
-	// 				throw err;
-	// 				done();
-	// 			}
-	//
-	// 			assert.equal(res.statusCode, 200) // successful request
-	// 			var bodyObj = JSON.parse(body)
-	// 			assert.notEqual(bodyObj,null)
-	// 			assert.equal(bodyObj.method, "POST")
-	// 			assert.equal(bodyObj.headers.host, "127.0.0.1:9990")
-	// 			assert.equal(bodyObj.body, bodyText)
-	// 			done()
-	// 		}
-	// 	)
-	// })
-	// it("proxy POST request to test server - with body, also tests proxy 'finish' event", function(done){
-	//
-	// 	var signalDone = _.after(2, function(){
-	// 		done()
-	// 	})
-	//
-	// 	mitm.on("finish", function(req, resp){
-	// 		// get here only if we got the event from mitm
-	// 		signalDone();
-	// 		return;
-	// 		console.log("GOT AN EVENT FROM MITM", req.constructor.name, resp.constructor.name)
-	// 		console.log("==============================================================================")
-	// 		console.log("HTTP/"+req.httpVersion)
-	// 		console.log(req.method)
-	// 		console.log(req.url)
-	// 		console.log(req.headers)
-	// 		console.log(req.rawBody.toString())
-	// 		console.log("-----------------------------------------------------------------------------")
-	// 		console.log("HTTP/"+resp.httpVersion)
-	// 		console.log(resp.statusCode)
-	// 		console.log(resp.statusMessage)
-	// 		console.log(resp.headers)
-	// 		console.log(resp.rawBody.toString())
-	// 		console.log("-----------------------------------------------------------------------------")
-	// 	})
-	// 	var bodyText = "This is SOME body text";
-	//
-	// 	request({
-	// 		method: "POST",
-	// 	    url: 'http://127.0.0.1:9990/test',
-	// 	    proxy: 'http://localhost:' + 4001,
-	// 		body : bodyText
-	// 	  }
-	// 	  ,function( err, res, body)
-	// 		{
-	// 			if (err) {
-	// 				console.log("simple proxy - got error", err)
-	// 				throw err;
-	// 				done();
-	// 			}
-	//
-	// 			assert.equal(res.statusCode, 200) // successful request
-	// 			var bodyObj = JSON.parse(body)
-	// 			assert.notEqual(bodyObj,null)
-	// 			assert.equal(bodyObj.method, "POST")
-	// 			assert.equal(bodyObj.headers.host, "127.0.0.1:9990")
-	// 			assert.equal(bodyObj.body, bodyText)
-	// 			signalDone()
-	// 		}
-	// 	)
-	// })
 
+	it("proxy GET request via proxy tunnel to test https server", function(done){
+		done();return;
+		
+		// tunnel does not mark the req or resp
+		testRequestViaProxy(done, serverPort, proxyPort, mitm, undefined, undefined)
+	})
+})
+
+describe("proxy access to https test server via non SNI https slave", function(done){
+	const proxyPort = 4001
+	const serverPort = 9443 //Note this forces the traffic through the slave server
+	let remote = null;
+	let mitm = null;
+	
+	
+	mylog.log("https.js::Sni should be false", Options)
+	before(function(done){
+		Options.sni = false
+		startServers(serverPort, proxyPort, Options, (r,m)=>{
+			remote = r;
+			mitm = m;
+			done();
+		})
+	})
+	after(function(done){
+		closeServers(remote, mitm, done)
+	})
+	it("proxy GET request via proxy slave server to test https server", function(done){
+		// a slave server marks the req and resp with two things 
+		// headers['mitm']='upstream-req
+		// headers['slave'] = "the slave masters whoAmI property", in this case PerHostnameSlaveMaster
+		testRequestViaProxy(done, serverPort, proxyPort, mitm, "upstream-req", "PerHostnameSlaveMaster")
+	})
+})
+describe("proxy access to https test server via https SNI slave", function(done){
+
+	const proxyPort = 4001
+	const serverPort = 9443
+	let remote = null;
+	let mitm = null;
+
+	before(function(done){
+		Options.sni= true
+		startServers(serverPort, proxyPort, Options, (r,m)=>{
+			remote = r;
+			mitm = m;
+			done()
+		})
+	})
+	after(function(done){
+		closeServers(remote, mitm, done)
+	})
+	it("proxy GET request via proxy slave server to test https server", function(done){
+		// done();return;
+		// a slave server marks the req and resp with two things 
+		// headers['mitm']='upstream-req
+		// headers['slave'] = "the slave masters whoAmI property", in this case SniSlaveMaster
+		testRequestViaProxy(done, serverPort, proxyPort, mitm, "upstream-req", "SniSlaveMaster")
+	})
 })

@@ -5,17 +5,21 @@ var inspect = require("util").inspect
 var http 	= require("http")
 var Options = require("./helpers/config")
 
+const Logger = require("../src/logger")
+const Helpers = require("./helpers/functions")
+Logger.disable()
+let verbose = false
+let tlog = Helpers.testLogger(verbose)
 
-
-var proxiedHost = "whiteacorn";
-var port = 443
+const proxiedHost = "whiteacorn";
+const proxyPort = 4001
 
 describe("a few simple tests with local whiteacorn", function(done){
 
 	var mitm;
 	
 	before(function(done){
-		mitm = new Mitm(Options.options)
+		mitm = new Mitm(Options)
 		mitm.listen(4001, "127.0.0.1")
 		done()
 	})
@@ -27,10 +31,10 @@ describe("a few simple tests with local whiteacorn", function(done){
 	})
 	
 	it("raw http.request to whiteacorn/ctl/", function(done){
-		var chunk_arr = [];
-		var responseBody = null;
-		var rb = "";
-		var r = http.request(
+		let chunk_arr = [];
+		let responseBody = null;
+		let rb = "";
+		let r = http.request(
 			"http://whiteacorn/ctl/",
 			function(res){
 				assert.equal(res.statusCode, 200)
@@ -67,7 +71,7 @@ describe("a few simple tests with local whiteacorn", function(done){
 				}
 				assert.equal(res.statusCode, 200) // successful request
 				assert.equal(body.includes("Whiteacorn - Admin"), true) // got the correct page
-				assert.notEqual( typeof res.headers["mitm-proxy"], "undefined") //the Mitm-proxy actually ptocessed it
+				assert.notEqual( typeof res.headers["mitm"], "undefined") //the Mitm-proxy actually ptocessed it
 				done()
 			}
 		);

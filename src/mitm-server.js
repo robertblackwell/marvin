@@ -1,53 +1,29 @@
-var url = require('url')
-var http = require("http")
-var EventEmitter = require('events').EventEmitter
-var util = require('util')
-var extend = util.inherits
-var net = require('net')
-var _ = require('underscore')
-var SlaveMaster = require("./slave-master")
-var connectionManager = require("./connection-manager")
-var logger = console
+const url = require('url')
+const http = require("http")
+const EventEmitter = require('events').EventEmitter
+const util = require('util')
+const extend = util.inherits
+const net = require('net')
+const _ = require('underscore')
 
-
-
+const Logger = require("./logger")
+const LogLevels = require("./logger").LogLevels
+const logger = require("./logger").createLogger(LogLevels.DEBUG)
+const SlaveMaster = require("./slave-master")
+const ForwardingAgent = require("./forwarding-agent")
+const MitmReportType = require("./mitm-report-type")
+const MitmReport = require("./mitm-report")
 /**
-* A utility function that in one operation pipes rStream into wStream and 
-* (optionally) collects the contents of the rStream into a buffer and passes it to the
-* cb function.
-*
-* If cb === null dont collect the contents
-*
-* @param rStream - readable stream
-* @param wStream - a writeable stream
-* @param cb - function with signture (Buffer). If null - dont collect the data
+* This is the set of default options used by {MitmServer} and the classes/modules it invokes
+* @config default_options
 */
-function pipeAndCollectStreamContent(rStream, wStream, cb)
-{
-	let buffers = [];
-	rStream.pipe(wStream);
-	if( cb ){
-		rStream.on('data', function(chunk){
-			buffers.push(chunk)
-		})
-		rStream.on('end', function(){
-			const streamContent = Buffer.concat(buffers)
-			cb(streamContent)
-		})
-	}
-}
-
-function tunnel(socket_1, socket_2){
-	
-}
-
 const default_options = {
 	capture :[	
 		RegExp(/^text\/.*$/), 
 		RegExp(/^application\/.*$/)
 	],
 	
-	/*
+	/**
 	* these options control how the proxy handles CONNECT requests
 	* any CONNECT to one of the given https_ports is treated as a https proxy request
 	* if the hostname is NOT matched by on of the entries in the array of host regexs
@@ -63,29 +39,99 @@ const default_options = {
 
 }
 
+const RESULT_TUNNEL="tunnel";
+const RESULT_HTTPS_SLAVE="https_slave"
+
+/**
+* This is the main entry point to the proxy process. It wires together all the bits 
+* required to monitor traffic, select the appropriate processing fo the traffic
+* and is the distribution center for sending intercepted traffic to the viewing
+* process.
+*
+* @class MitmServer
+*
+* @constructor
+* @param {Options Object} options
+*
+*/
 var MitmServer = module.exports = function MitmServer(options){
+	// Logger.disable();
 	// this.options = {};
+	logger.log("MitmServer .. starting")
 	this.options = Object.assign(default_options, options)
 	this.acceptableContent = this.options.capture;
 	this.log = logger.log;
 	this.collectableContentType = ["text","application"]
 	
 	this.server = http.createServer();
-	this.slaveMaster = new SlaveMaster(this.options, this.forward.bind(this))
+	logger.log("MitmServer::constructor::createSlaveMaster sni:", this.options)
+	logger.log("MitmServer::constructor::createSlaveMaster sni:", options)
+	this.slaveMaster = SlaveMaster.create(this.options, this.completionCb.bind(this)) //This is not right @FIX
+	
 	this.server.on('request', this.forward.bind(this));
 	this.server.on("connect", this.handleConnect.bind(this));
 	this.server.on("upgrade", this.handleUpgrade.bind(this));
 	// console.log(options)
 	// require('process').exit()
-	EventEmitter.call(this)
-	
+	EventEmitter.call(this)	
 }
 MitmServer.prototype.__proto__ =  EventEmitter.prototype;
 
-/*
-* We have a CONNECT request - so what are we going to do?
-* @param req IncomingMessage
-* @return - STRING, possible values:
+/**
+* Reports a https tunnel event.
+* @method reportHttpsTunnel
+* @param {string} status
+* @param {string} host 
+* @param {number} port
+* @emits "finish"
+*/
+MitmServer.prototype.reportHttpsTunnel = function(statusStr, host, port){
+	logger.info("MitmServer::reportTunnel::", statusStr, host, port)
+	let rept = MitmReport.createHttpsTunnelReport(statusStr, host, port)
+	this.emit('finish', rept)
+	logger.info("MitmServer::reportTunnel::return")
+	return;
+	
+	// const rept = {
+	// 	type : "HttpsTunnel",
+	// 	status : status,
+	// 	host : host,
+	// 	port : port
+	// }
+	// this.emit('finish', rept)
+	// logger.info("MitmServer::reportTunnel::return")
+	
+}
+/**
+* Reports a http or https interchage that was intercepted.
+* @method reportHttpTransaction
+* @param {string} protocol (https: or http:)
+* @param {Node::IncomingMessage} req - an https or http request 
+* @param {Node::IncomingMessage} resp - an http or https response
+* @emits "finish"
+*/
+MitmServer.prototype.reportHttpTransaction = function(protocol, req, resp){
+	logger.info("MitmServer::reportHttpTransaction::", req.headers, resp.headers)
+	/**
+	* both the req and resp are of type IncomingMessage which contains way too much
+	* irrelevant data, here we will strip them down to the essential
+	*/
+	let report = MitmReport.createHttpTransactionReport(protocol, req, resp)
+	this.emit('finish', report)
+	logger.info("MitmServer::reportHttpTransaction::return")
+	
+}
+MitmServer.prototype.completionCb = function(protocol, req, resp){
+	this.reportHttpTransaction(protocol, req, resp)
+}
+
+/**
+* We have a CONNECT request - so what are we going to do? This method works that out and returns 
+* a code to tell the outside world
+*
+* @method determineConnectAction
+* @param {Node::IncomingMessage}req - incoming client request
+* @return {string} possible values:
 *
 *	-	"tunnel" 		- set up a transparent tunnel between the client socket and the target server
 *	-	"https_slave"	- its a https CONNECT that we want to monitor - tunnel to a https slave that will monitor traffic
@@ -94,27 +140,42 @@ MitmServer.prototype.__proto__ =  EventEmitter.prototype;
 *
 */
 MitmServer.prototype.determineConnectAction = function(req){
+		
 	const pUrl = url.parse(req.url);
 	const hName = pUrl.hostname;
 	const protocol = pUrl.protocol;
 	
 	const tmp = req.url.split(":")
-	const targetPort = tmp[1];
+	const targetPort = parseInt(tmp[1]);
+	const targetHost = tmp[0];
 	
-	let isHttpConnectPort = this.options.http_ports.includes(targetPort)
-	let isHttpsPort = this.options.https_ports.includes(targetPort)
+	let isHttpConnectPort = this.options.http_ports.includes(targetPort);
+	let isHttpsPort = this.options.https_ports.includes(targetPort);
+	
+	logger.info("MitmServer::determineConnectAction isHttpsPort : ", targetPort, isHttpsPort)
+	logger.info("MitmServer::determineConnectAction ", req.url)
+	logger.info("MitmServer::determineConnectAction ", req.headers)
+	logger.info("MitmServer::determineConnectAction ", this.options.https_ports)
+
+	logger.info("MitmServer::determineConnectAction ", pUrl)
+	logger.info("MitmServer::determineConnectAction port : " + targetPort + " host: " + targetHost)
+
+	let result = RESULT_TUNNEL; // this is the catchall outcome
+
 	if( !isHttpConnectPort && ! isHttpsPort ){
 		/*
 		* We know nothing special about this port so the best we can do is tunnel
 		*/
-		return "tunnel"
+		logger.debug("MitmServer::determineConnectAction return tunnel if", isHttpConnectPort, isHttpsPort)
+		result = RESULT_TUNNEL;
 	}else if(isHttpConnectPort && ! isHttpsPort ){
 		/*
 		* We are probably being asked to tunnel a ws connection. Will know for sure when we get
 		* the upgrade request which should be the next request from this client.
 		* FOR THE MOMENT - LETS JUST IGNORE THIS COMPLEXITY
 		*/
-		return "tunnel";
+		logger.debug("MitmServer::determineConnectAction return tunnel http port")
+		result = RESULT_TUNNEL;
 	}
 	
 	let isHttpsHostname = false;
@@ -127,18 +188,38 @@ MitmServer.prototype.determineConnectAction = function(req){
 		/**
 		* Its a https connect request that we are going to MITM
 		*/
-		return "https_slave";
+		logger.debug("MitmServer::determineConnectAction return http_slave")
+		result=RESULT_HTTPS_SLAVE;
 	}
-	/**
-	* Catchall
-	*/
-	return "tunnel";
+	logger.info("MitmServer::determineConnectAction return: [%s]", result)
+	return result;
 }
 
+/**
+*/
+MitmServer.prototype.forward = function(req, resp){
+	logger.log("MitmServer::forward handle request ", req.url )
+	let  fa = new ForwardingAgent("http:", this.options)
+	fa.forward(req, resp, (protocol, req, tResp)=>{
+		this.completionCb("http:", req, tResp)
+		// this.emit('finish', req, tResp)
+	})
+}
+
+/**
+* Sets up a anonymous tunnel for an https request
+* @method tunnel
+* @param {IncomingMessage} req - incoming client reuqest
+* @param {net.Socket} socket - a socket that provides connection to the client
+* @param {string} targetHost - the hostname of the target server
+* @param {number} targetPort - the port number of the target server
+*/
 MitmServer.prototype.tunnel = function(req, socket, targetHost, targetPort){
+	logger.log("MitmServer::tunnel", targetHost, targetPort)
 	let socketToTarget = net.Socket()
 
 	socketToTarget.on('error', (err)=>{
+		logger.error("MitmServer::tunnel::socketToTarget::error", err)
 		/*
 		* Got an error trying to connect or talk to the targetServer
 		* reject the connect
@@ -147,6 +228,7 @@ MitmServer.prototype.tunnel = function(req, socket, targetHost, targetPort){
 	})
 
 	req.socket.on('error', (err)=>{
+		logger.error("MitmServer::tunnel::req.socket::error", err)
 		/*
 		* got an error on the connection to the client - just out of here
 		*/
@@ -154,15 +236,16 @@ MitmServer.prototype.tunnel = function(req, socket, targetHost, targetPort){
 	/*
 	* Try connecting to the target server. On err 
 	*/
-	socketToTarget.connect(targetPort, targetHost, (err)=>{
-		if( err ){
-			req.socket.write("HTTP/1.1 404 Connection not established\r\n\r\n")
-			// log and notify the exception
-		}else{
-			socketToTarget.on('error',(err)=>{
-				console.log("Error on connection to server")
-				// need better logging
-			})
+	socketToTarget.connect(targetPort, targetHost, ()=>{
+		logger.info("MitmServer::tunnel:: connect")
+		// if( err ){
+		// 	req.socket.write("HTTP/1.1 404 Connection not established\r\n\r\n")
+		// 	// log and notify the exception
+		// }else{
+		// 	socketToTarget.on('error',(err)=>{
+		// 		console.log("Error on connection to server")
+		// 		// need better logging
+		// 	})
 			/*
 			* No establish tunnel via twoway pipe
 			*/
@@ -176,29 +259,57 @@ MitmServer.prototype.tunnel = function(req, socket, targetHost, targetPort){
 			* emit/notify the world of the tunnel transaction
 			*/
 			// log the tunnel request and OK
-			this.emit('tunnel', {status: "OK", port: targetPort, host: targetHost})
-		}
+			// this.reportHttpsTunnel("OK", targetHost, targetPort)
+			// this.emit('tunnel', {status: "OK", port: targetPort, host: targetHost})
+		// }
 	})
 	
 }
+
+/**
+* This method tunnels to one of the https slave servers if it has been determined that this
+* https interaction will be captured. 
+* @method tunnelToHttpsSlave
+* @param {IncomingMessage} req - a request from client in the form of IncomingMessage. WE need the req 
+*								so that we can pipe the message body to the slave server
+* @param {net.Socket} socket - a socket that provides connection to the client
+* @param {string} targetHost - the hostname of the target server
+*/
 MitmServer.prototype.tunnelToHttpsSlave = function tunnelToHttpsSlave(req, socket, targetHost){
 	/*
 	* Ask the slaveMaster for a port (on the localmachine) of a suitable slave HTTPS server.
 	* Once we have the port set up a tunnel to it
 	*/		
+	logger.log("MitmServer::tunnelToHttpsSlave hostname:[ %s ]  type of slave : [%s]", targetHost, this.slaveMaster.constructor.name)
+	// console.log("MitmServer::tunnelToHttpsSlave", this.constructor.name, this.slaveMaster)
 	this.slaveMaster.getPortForHost(targetHost, (err, port)=>{
+		logger.info("MitmServer::returned from getPortForHost", err, port)
 		const portToSlave=port;
 		if( err ){
 			req.socket.write("HTTP/1.1 404 Connection not established\r\n\r\n")
+			logger.error("MitmServer::tunnelToHttpsSlave failed to get port for host ", err)
 			// log the exception
 		}else{
+			logger.info("MitmServer::tunnelToHttpsSlave port : ", portToSlave)
 			this.tunnel(req, socket, 'localhost', portToSlave);
 		}
 	})
 }
-MitmServer.prototype.handleConnect = function(req, socket)
-{
-	// this.log("MitmServer::handleConnect");
+/**
+* Called by the server object when a CONNECT request is received. The two options are:
+* 	-	if this is an https request and hostname and port are of interest (as determined by
+*		https_hostname and https_port in the options object) and the request/response are
+*		to be captured then tunnel to a https slave server
+*	-	otherwise connect to the hostname::port and tunnel to that connection	
+*
+* @method handleConnection
+* @param {IncomingMessage} req - a request from client in the form of IncomingMessage. WE need the req 
+*								so that we can pipe the message body to the slave server
+* @param {net.Socket} socket - a socket that provides connection to the client
+*/
+MitmServer.prototype.handleConnect = function(req, socket){
+	logger.info("MitmServer::handleConnect");
+	logger.log("MitmServer::handleConnect::req.url: %s req.headers :", req.url, req.headers);
 	var tmp = req.url.split(":")
 	var targetHost = tmp[0];
 	var targetPort = tmp[1];
@@ -207,14 +318,16 @@ MitmServer.prototype.handleConnect = function(req, socket)
 	
 	let action = this.determineConnectAction(req)
 	switch(action){
-	case "tunnel":
+	case RESULT_TUNNEL:
+		logger.info("handleConnect - tunnel")
 		this.tunnel(req, socket, targetHost, targetPort)
 		break;
-	case "https_slave":
+	case RESULT_HTTPS_SLAVE:
+		logger.info("MitmServer::handleConnect", this.constructor.name)
 		this.tunnelToHttpsSlave(req, socket, targetHost)
 		break;
 	default:
-		throw Error("actionOnConnect - default")
+		throw Error("actionOnConnect - default [" + action + "]")
 		break;	
 	}
 	return;
@@ -236,220 +349,23 @@ MitmServer.prototype.handleConnect = function(req, socket)
 		socketToTarget.pipe(req.socket);
 		req.socket.write("HTTP/1.1 200 Connection established \r\n\r\n")
 		this.emit('tunnel', {status: "OK", port: targetPort, host: targetHost})
-		
 	})
-
 }
 
-MitmServer.prototype.handleUpgrade = function(req, resp)
-{
+MitmServer.prototype.handleUpgrade = function(req, resp){
 	throw Error("Upgrade not implemented")
-}
-MitmServer.prototype.handleRequest = function(req, resp)
-{
-	this.forward(req, resp)
 }
 
 MitmServer.prototype.listen = function(proxyPort, proxyServername, cb){
+	logger.log("MitmServer::listening ", proxyPort, proxyServername)
 	this.proxyPort = proxyPort
 	this.proxyHost = proxyServername
 	this.server.listen(this.proxyPort, proxyServername, cb)
 }
 
 MitmServer.prototype.close = function(cb){
+	logger.log("MitmServer::close ")
 	this.server.close(cb)
 }
 
-/**
-* Determine what types of response content we want to collect and signal
-* on a finish event. The goal here is ONLY to prevent collecting into a buffer a 
-* large reponse body that we will probably never look at.
-* For example - Probably do not want to collect image/ video/ audio/ types of content
-* Put another way only text/*  and application/* will be collected
-* @param res IncomingMessage
-*/
-MitmServer.prototype.shouldCollectResponseBody = function(res /*IncomingMessage*/)
-{
-	var result = false;
-	if( res.headers['content-type'] === undefined ){
-		// console.log("shouldCollect there is NO content type")
-		result = true;
-	}else{
-		var c_type = res.headers['content-type']
-		// console.log("shouldCollect content type is ", res.headers['content-type'])
-		this.acceptableContent.forEach((re)=>{
-			// var re = new Regex(reStr)
-			// console.log("matching loop", c_type, (c_type.match(re)!== null) )
-			if( c_type.match(re) !== null ){
-				result = true;
-			}
-		})
-	}
-	// console.log("shouldCollectResponseBody", result)
-	return result;
-}
-MitmServer.prototype.getCollectableContentTypes = function()
-{
-	return this.collectableContentTypes;
-}
-MitmServer.prototype.setCollectableContentTypes = function(config)
-{
-	this.collectableContentType = config;
-}
-
-
-/**
-* This method does all the heavy lifting of the proxying or request forwarding
-* process and also provides to hook for extracting the request/response for monitoring.
-*
-* The procss is roughly as follows:
-*	-	take the initial client request "req" (of type IncomingMessage) and from this construct a 
-*		(maybe modified) request to the target server. This will at least involve taking the proxy stuff out of
-*		the headers.
-*
-*	-	when the response (of type IncomingMessage) arrives from the target server, from it build (fill in the details of)
-*		the response "resp" (of type ServerResponse )that is destined for the initial client
-*		and again there might be some header modifications.
-*
-*	-	once the response to the initial client signals "finish" - meaning all responsibility for this response 
-*		has passed to the OS signal the outside world by triggering a "finish" event on the Mitm object
-*		so watches can log the transaction. The event name "finish" is probably a bit unfortunate
-*
-*	-	the finish event handler has signature function(req, res) where
-*		-	req is the original client req of type IncomingMessage to which has been added a rawBody property
-*			of type Buffer
-*		-	res is the response from the target server of type IncomingMessage to which (in selected cases) has
-*			been added a property rawBody. The rawBody is only added if this.shouldCollectResponseBody() returns true
-*
-* @param req 	IncomeingMessage 	- 	the request message from the original client
-* @param resp	ServerResponse		- 	the response to be sent to the initial client
-* @param this	the Mitm object		-	
-*/
-MitmServer.prototype.forward = function forward(req, resp)
-{
-	/**
-	* Parse the url in prep for forwarding the request upstream
-	*/
-	var pUrl = url.parse(req.url)
-	
-	/**
-	* strip out headers that should not be passed upstream and add any procy headers
-	* that should be added. 
-	* @TODO - research what else I have to do
-	*/
-	var reqHeaders = {"mitm": "upstream-req"}; 
-	Object.assign(reqHeaders, req.headers);
-	var newHeaders = {"mitm": "upstream-req"};
-	
-	_.each(reqHeaders, (value, key, list) =>{
-		// console.log("key: " + key + "  value: " + value + " test : " + ({'host':true,'port':true}[key]))
-		if( {'host':true,'port':true}[key] !== true )
-			newHeaders[key] = value
-	})
-	delete reqHeaders['host'];
-	delete reqHeaders['port'];
-	// console.log(["after mod headers"])
-	// console.log(reqHeaders)
-	// console.log(newHeaders)
-	// process.exit()
-	 
-	const options = {
-		hostname : pUrl.hostname,
-		path : pUrl.path,
-		method : req.method,
-		headers : newHeaders
-	}
-	
-	/**
-	* This should be easier - lets try promises so that it looks like
-	*
-	*	getConnection(protocol, host, port)
-	*	.then(sendUpstreamRequest) 						
-	*	.then(decodeUpStreamResponseAndSendToClient)	
-	*	.then(notifyHttpTransactionFinished)
-	*/
-	const upstreamCallback = (targetServerResponse)=>{
-		/**
-		* modify the reponse if necessary. At this time only add a mitm header to
-		* so the forwarding process can be detected
-		*/
-		targetServerResponse.headers['Mitm-proxy'] = "versionxx"
-		
-		/**
-		* now send the response downstream to the original client
-		*/
-		resp.writeHead(targetServerResponse.statusCode, targetServerResponse.headers)
-		/**
-		* forward the response body downstream
-		* and possibly collect the response body provided the content-type is appropriate
-		* do this here to ensure we dont try collecting the contents of very large
-		* response bodies
-		* other cleaning up of the request body and response body for display purposes
-		* can take place elsewhere
-		*/
-		if( this.shouldCollectResponseBody(targetServerResponse) ){
-			pipeAndCollectStreamContent(targetServerResponse, resp, (content)=>{
-				targetServerResponse.rawBody = content; // a bit of a hack - add the full captured body dynamically to the response
-			})
-		}else{
-			targetServerResponse.pipe(resp)
-			targetServerResponse.rawBody = new Buffer("")
-			// pipeAndCollectStreamContent(targetServerResponse, resp, (content)=>{
-			// 	targetServerResponse.rawBody = new Buffer("")
-			// })
-		}
-		resp.on('finish', ()=>{
-			/**
-			* at this point the entire req/resp cycle is over so package it up 
-			* and send a "notification" to who-ever. 
-			* @NOTE - assumes "this" is the Mitm object
-			*/
-			this.emit("finish", req, targetServerResponse)
-		})
-	}
-	if( pUrl.port) options.port = pUrl.port;
-	/**
-	* get a connection and when we have it send the request upstream
-	*/
-	var conn = connectionManager.getConnectionForHostPort("http", pUrl.hostname, options.port, (err, conn)=>{
-		if( err ){
-			throw new Error("getConnectionForHostPort failed host :" + host + " port: " + port)
-		}
-		var upStreamReq = conn.httpRequest( options, upstreamCallback )
-
-		upStreamReq.on('error', (e) => {
-			/**
-			* Need to do something better with this
-			*/
-		  console.log(`problem with request: ${e.message}`);
-		});
-	
-		/**
-		* pipe the request body upstream to the target server
-		* and also save the request body
-		*/
-		pipeAndCollectStreamContent(req, upStreamReq, (content)=>{
-			req.rawBody = content; // also a the same hack - add the raw body dynamically to the request 
-			upStreamReq.end(); // not sure about this -- maybe the pipe does this for me
-		})
-		
-	})
-	// var upStreamReq = conn.sendHttpRequest( options, upstreamCallback )
-	//
-	// upStreamReq.on('error', (e) => {
-	// 	/**
-	// 	* Need to do something better with this
-	// 	*/
-	//   console.log(`problem with request: ${e.message}`);
-	// });
-	//
-	// /**
-	// * pipe the request body upstream to the target server
-	// * and also save the request body
-	// */
-	// pipeAndCollectStreamContent(req, upStreamReq, (content)=>{
-	// 	req.rawBody = content; // also a the same hack - add the raw body dynamically to the request
-	// 	upStreamReq.end(); // not sure about this -- maybe the pipe does this for me
-	// })
-}
 

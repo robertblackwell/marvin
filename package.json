@@ -2,19 +2,25 @@
   "name": "marvin",
   "version": "0.3.1",
   "dependencies": {
+    "async": "*",
+    "electron": "^1.4.5",
+    "jquery": "^3.1.1",
     "regex": "^0.1.1",
-    "request": ">=2.51.0"
+    "request": ">=2.51.0",
+    "underscore": "^1.8.3"
   },
   "description": "HTTP/HTTPS debugging proxy",
   "main": "index.js",
   "devDependencies": {
+    "gulp": "^3.9.1",
+    "gulp-jsdoc3": "^1.0.0",
     "httpdispatcher": "*",
     "mocha": "*",
-    "request": "*",
-    "underscore": "^1.8.3"
+    "request": "*"
   },
   "scripts": {
-    "test": "mocha -R spec --recursive"
+    "test": "mocha -R spec --recursive",
+	"start": "./node_modules/.bin/electron main.js"
   },
   "repository": {
     "type": "git",

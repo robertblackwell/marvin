@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>src/mitm-server.js</title>
+    <link rel="stylesheet" href="http://yui.yahooapis.com/3.9.1/build/cssgrids/cssgrids-min.css">
+    <link rel="stylesheet" href="../assets/vendor/prettify/prettify-min.css">
+    <link rel="stylesheet" href="../assets/css/main.css" id="site_styles">
+    <link rel="icon" href="../assets/favicon.ico">
+    <script src="http://yui.yahooapis.com/combo?3.9.1/build/yui/yui-min.js"></script>
+</head>
+<body class="yui3-skin-sam">
+
+<div id="doc">
+    <div id="hd" class="yui3-g header">
+        <div class="yui3-u-3-4">
+                <h1><img src="../assets/css/logo.png" title="" width="117" height="52"></h1>
+        </div>
+        <div class="yui3-u-1-4 version">
+            <em>API Docs for: </em>
+        </div>
+    </div>
+    <div id="bd" class="yui3-g">
+
+        <div class="yui3-u-1-4">
+            <div id="docs-sidebar" class="sidebar apidocs">
+                <div id="api-list">
+                    <h2 class="off-left">APIs</h2>
+                    <div id="api-tabview" class="tabview">
+                        <ul class="tabs">
+                            <li><a href="#api-classes">Classes</a></li>
+                            <li><a href="#api-modules">Modules</a></li>
+                        </ul>
+                
+                        <div id="api-tabview-filter">
+                            <input type="search" id="api-filter" placeholder="Type to filter APIs">
+                        </div>
+                
+                        <div id="api-tabview-panel">
+                            <ul id="api-classes" class="apis classes">
+                                <li><a href="../classes/ForwardingAgent.html">ForwardingAgent</a></li>
+                                <li><a href="../classes/HttpsSlaveMaster.html">HttpsSlaveMaster</a></li>
+                                <li><a href="../classes/MitmServer.html">MitmServer</a></li>
+                                <li><a href="../classes/Options_object.html">Options_object</a></li>
+                                <li><a href="../classes/PerHostnameSlaveMaster.html">PerHostnameSlaveMaster</a></li>
+                                <li><a href="../classes/SniSlaveMaster.html">SniSlaveMaster</a></li>
+                            </ul>
+                
+                
+                            <ul id="api-modules" class="apis modules">
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="yui3-u-3-4">
+                <div id="api-options">
+                    Show:
+                    <label for="api-show-inherited">
+                        <input type="checkbox" id="api-show-inherited" checked>
+                        Inherited
+                    </label>
+            
+                    <label for="api-show-protected">
+                        <input type="checkbox" id="api-show-protected">
+                        Protected
+                    </label>
+            
+                    <label for="api-show-private">
+                        <input type="checkbox" id="api-show-private">
+                        Private
+                    </label>
+                    <label for="api-show-deprecated">
+                        <input type="checkbox" id="api-show-deprecated">
+                        Deprecated
+                    </label>
+            
+                </div>
+            
+            <div class="apidocs">
+                <div id="docs-main">
+                    <div class="content">
+<h1 class="file-heading">File: src/mitm-server.js</h1>
+
+<div class="file">
+    <pre class="code prettyprint linenums">
+const url = require(&#x27;url&#x27;)
+const http = require(&quot;http&quot;)
+const EventEmitter = require(&#x27;events&#x27;).EventEmitter
+const util = require(&#x27;util&#x27;)
+const extend = util.inherits
+const net = require(&#x27;net&#x27;)
+const _ = require(&#x27;underscore&#x27;)
+
+const Logger = require(&quot;./logger&quot;)
+const LogLevels = require(&quot;./logger&quot;).LogLevels
+const logger = require(&quot;./logger&quot;).createLogger(LogLevels.DEBUG)
+const SlaveMaster = require(&quot;./slave-master&quot;)
+const ForwardingAgent = require(&quot;./forwarding-agent&quot;)
+const MitmReportType = require(&quot;./mitm-report-type&quot;)
+const MitmReport = require(&quot;./mitm-report&quot;)
+
+/**
+* This is the set of default options used by {MitmServer} and the classes/modules it invokes
+* @config default_options
+*/
+const default_options = {
+	capture :[	
+		RegExp(/^text\/.*$/), 
+		RegExp(/^application\/.*$/)
+	],
+	
+	/**
+	* these options control how the proxy handles CONNECT requests
+	* any CONNECT to one of the given https_ports is treated as a https proxy request
+	* if the hostname is NOT matched by on of the entries in the array of host regexs
+	* then an anonymous tunnel to established
+	* If a hostname IS matched then the traffic from the client is tunneled to the 
+	* backend https server and the request and response are captured 
+	* A CONNECT to one of the http_ports is probably the start of a WS/WSS handshake
+	* DONT KNOW HOW TO HANDLE THAT AT THE MOMENT 
+	*/
+	http_ports	: [80, 8080, 9980], 	//ports that will trigger an HTTP(no S) proxy
+	https_ports	: [443,9443], 			//ports that will trigger an https_note_the_s proxy
+	https_hosts	: [RegExp(/^.*$/)],		//regex to identify hosts that should invoke https mitm
+
+}
+
+const RESULT_TUNNEL=&quot;tunnel&quot;;
+const RESULT_HTTPS_SLAVE=&quot;https_slave&quot;
+
+/**
+* This is the main entry point to the proxy process. It wires together all the bits 
+* required to monitor traffic, select the appropriate processing fo the traffic
+* and is the distribution center for sending intercepted traffic to the viewing
+* process.
+*
+* @class MitmServer
+*
+* @constructor
+* @param {Options Object} options
+*
+*/
+var MitmServer = module.exports = function MitmServer(options){
+	// Logger.disable();
+	// this.options = {};
+	logger.log(&quot;MitmServer .. starting&quot;)
+	this.options = Object.assign(default_options, options)
+	this.acceptableContent = this.options.capture;
+	this.log = logger.log;
+	this.collectableContentType = [&quot;text&quot;,&quot;application&quot;]
+	
+	this.server = http.createServer();
+	logger.log(&quot;MitmServer::constructor::createSlaveMaster sni:&quot;, this.options)
+	logger.log(&quot;MitmServer::constructor::createSlaveMaster sni:&quot;, options)
+	this.slaveMaster = SlaveMaster.create(this.options, this.completionCb.bind(this)) //This is not right @FIX
+	
+	this.server.on(&#x27;request&#x27;, this.forward.bind(this));
+	this.server.on(&quot;connect&quot;, this.handleConnect.bind(this));
+	this.server.on(&quot;upgrade&quot;, this.handleUpgrade.bind(this));
+	// console.log(options)
+	// require(&#x27;process&#x27;).exit()
+	EventEmitter.call(this)	
+}
+MitmServer.prototype.__proto__ =  EventEmitter.prototype;
+
+/**
+* Reports a https tunnel event.
+* @method reportHttpsTunnel
+* @param {string} status
+* @param {string} host 
+* @param {number} port
+* @emits &quot;finish&quot;
+*/
+MitmServer.prototype.reportHttpsTunnel = function(status, host, port){
+	logger.info(&quot;MitmServer::reportTunnel::&quot;, status, host, port)
+	const rept = {
+		type : &quot;HttpsTunnel&quot;,
+		status : status,
+		host : host,
+		port : port
+	}
+	this.emit(&#x27;finish&#x27;, rept)
+	logger.info(&quot;MitmServer::reportTunnel::return&quot;)
+	
+}
+/**
+* Reports a http or https interchage that was intercepted.
+* @method reportHttpTransaction
+* @param {string} protocol (https: or http:)
+* @param {Node::IncomingMessage} req - an https or http request 
+* @param {Node::IncomingMessage} resp - an http or https response
+* @emits &quot;finish&quot;
+*/
+MitmServer.prototype.reportHttpTransaction = function(protocol, req, resp){
+	console.log(&quot;MitmServer::reportHttpTransaction::&quot;, protocol, req.headers, resp.headers)
+	logger.info(&quot;MitmServer::reportHttpTransaction::&quot;, req.headers, resp.headers)
+	/**
+	* both the req and resp are of type IncomingMessage which contains way too much
+	* irrelevant data, here we will strip them down to the essential
+	*/
+	const strippedRequest = stripRequest(req)
+	const strippedResponse = stripResponse(resp)
+	const record = {
+		type	 : &quot;httpTransaction&quot;,
+		protocol : protocol,
+		request  : strippedRequest,
+		response : strippedResponse
+	}
+	this.emit(&#x27;finish&#x27;, strippedRequest, strippedResponse)
+	logger.info(&quot;MitmServer::reportHttpTransaction::return&quot;)
+	
+}
+MitmServer.prototype.completionCb = function(protocol, req, resp){
+	this.reportHttpTransaction(protocol, req, resp)
+}
+
+/**
+* We have a CONNECT request - so what are we going to do? This method works that out and returns 
+* a code to tell the outside world
+*
+* @method determineConnectAction
+* @param {Node::IncomingMessage}req - incoming client request
+* @return {string} possible values:
+*
+*	-	&quot;tunnel&quot; 		- set up a transparent tunnel between the client socket and the target server
+*	-	&quot;https_slave&quot;	- its a https CONNECT that we want to monitor - tunnel to a https slave that will monitor traffic
+*	
+*	@note - currently not sure how to handle ws/wss CONNECT requests
+*
+*/
+MitmServer.prototype.determineConnectAction = function(req){
+		
+	const pUrl = url.parse(req.url);
+	const hName = pUrl.hostname;
+	const protocol = pUrl.protocol;
+	
+	const tmp = req.url.split(&quot;:&quot;)
+	const targetPort = parseInt(tmp[1]);
+	const targetHost = tmp[0];
+	
+	let isHttpConnectPort = this.options.http_ports.includes(targetPort);
+	let isHttpsPort = this.options.https_ports.includes(targetPort);
+	
+	logger.info(&quot;MitmServer::determineConnectAction isHttpsPort : &quot;, targetPort, isHttpsPort)
+	logger.info(&quot;MitmServer::determineConnectAction &quot;, req.url)
+	logger.info(&quot;MitmServer::determineConnectAction &quot;, req.headers)
+	logger.info(&quot;MitmServer::determineConnectAction &quot;, this.options.https_ports)
+
+	logger.info(&quot;MitmServer::determineConnectAction &quot;, pUrl)
+	logger.info(&quot;MitmServer::determineConnectAction port : &quot; + targetPort + &quot; host: &quot; + targetHost)
+
+	let result = RESULT_TUNNEL; // this is the catchall outcome
+
+	if( !isHttpConnectPort &amp;&amp; ! isHttpsPort ){
+		/*
+		* We know nothing special about this port so the best we can do is tunnel
+		*/
+		logger.debug(&quot;MitmServer::determineConnectAction return tunnel if&quot;, isHttpConnectPort, isHttpsPort)
+		result = RESULT_TUNNEL;
+	}else if(isHttpConnectPort &amp;&amp; ! isHttpsPort ){
+		/*
+		* We are probably being asked to tunnel a ws connection. Will know for sure when we get
+		* the upgrade request which should be the next request from this client.
+		* FOR THE MOMENT - LETS JUST IGNORE THIS COMPLEXITY
+		*/
+		logger.debug(&quot;MitmServer::determineConnectAction return tunnel http port&quot;)
+		result = RESULT_TUNNEL;
+	}
+	
+	let isHttpsHostname = false;
+	this.options.https_hosts.forEach((re)=&gt;{
+		if( hName.match(re) != null){
+			isHttpsHostname = true;
+		}
+	})
+	if( isHttpsPort &amp;&amp; isHttpsHostname){
+		/**
+		* Its a https connect request that we are going to MITM
+		*/
+		logger.debug(&quot;MitmServer::determineConnectAction return http_slave&quot;)
+		result=RESULT_HTTPS_SLAVE;
+	}
+	logger.info(&quot;MitmServer::determineConnectAction return: [%s]&quot;, result)
+	return result;
+}
+
+/**
+*/
+MitmServer.prototype.forward = function(req, resp){
+	logger.log(&quot;MitmServer::forward handle request &quot;, req.url )
+	let  fa = new ForwardingAgent(&quot;http:&quot;, this.options)
+	fa.forward(req, resp, (req, tResp)=&gt;{
+		this.completionCb(protocol, req, tResp)
+		// this.emit(&#x27;finish&#x27;, req, tResp)
+	})
+}
+
+/**
+* Sets up a anonymous tunnel for an https request
+* @method tunnel
+* @param {IncomingMessage} req - incoming client reuqest
+* @param {net.Socket} socket - a socket that provides connection to the client
+* @param {string} targetHost - the hostname of the target server
+* @param {number} targetPort - the port number of the target server
+*/
+MitmServer.prototype.tunnel = function(req, socket, targetHost, targetPort){
+	logger.log(&quot;MitmServer::tunnel&quot;, targetHost, targetPort)
+	let socketToTarget = net.Socket()
+
+	socketToTarget.on(&#x27;error&#x27;, (err)=&gt;{
+		logger.error(&quot;MitmServer::tunnel::socketToTarget::error&quot;, err)
+		/*
+		* Got an error trying to connect or talk to the targetServer
+		* reject the connect
+		*/
+		req.socket.write(&quot;HTTP/1.1 404 Connection not established\r\n\r\n&quot;)
+	})
+
+	req.socket.on(&#x27;error&#x27;, (err)=&gt;{
+		logger.error(&quot;MitmServer::tunnel::req.socket::error&quot;, err)
+		/*
+		* got an error on the connection to the client - just out of here
+		*/
+	})
+	/*
+	* Try connecting to the target server. On err 
+	*/
+	socketToTarget.connect(targetPort, targetHost, ()=&gt;{
+		logger.info(&quot;MitmServer::tunnel:: connect&quot;)
+		// if( err ){
+		// 	req.socket.write(&quot;HTTP/1.1 404 Connection not established\r\n\r\n&quot;)
+		// 	// log and notify the exception
+		// }else{
+		// 	socketToTarget.on(&#x27;error&#x27;,(err)=&gt;{
+		// 		console.log(&quot;Error on connection to server&quot;)
+		// 		// need better logging
+		// 	})
+			/*
+			* No establish tunnel via twoway pipe
+			*/
+			req.socket.pipe(socketToTarget);
+			socketToTarget.pipe(req.socket);
+			/*
+			* give the client the OK to start
+			*/
+			req.socket.write(&quot;HTTP/1.1 200 Connection established \r\n\r\n&quot;)
+			/*
+			* emit/notify the world of the tunnel transaction
+			*/
+			// log the tunnel request and OK
+			this.reportHttpsTunnel(&quot;OK&quot;, targetHost, targetPort)
+			// this.emit(&#x27;tunnel&#x27;, {status: &quot;OK&quot;, port: targetPort, host: targetHost})
+		// }
+	})
+	
+}
+
+/**
+* This method tunnels to one of the https slave servers if it has been determined that this
+* https interaction will be captured. 
+* @method tunnelToHttpsSlave
+* @param {IncomingMessage} req - a request from client in the form of IncomingMessage. WE need the req 
+*								so that we can pipe the message body to the slave server
+* @param {net.Socket} socket - a socket that provides connection to the client
+* @param {string} targetHost - the hostname of the target server
+*/
+MitmServer.prototype.tunnelToHttpsSlave = function tunnelToHttpsSlave(req, socket, targetHost){
+	/*
+	* Ask the slaveMaster for a port (on the localmachine) of a suitable slave HTTPS server.
+	* Once we have the port set up a tunnel to it
+	*/		
+	logger.log(&quot;MitmServer::tunnelToHttpsSlave hostname:[ %s ]  type of slave : [%s]&quot;, targetHost, this.slaveMaster.constructor.name)
+	// console.log(&quot;MitmServer::tunnelToHttpsSlave&quot;, this.constructor.name, this.slaveMaster)
+	this.slaveMaster.getPortForHost(targetHost, (err, port)=&gt;{
+		logger.info(&quot;MitmServer::returned from getPortForHost&quot;, err, port)
+		const portToSlave=port;
+		if( err ){
+			req.socket.write(&quot;HTTP/1.1 404 Connection not established\r\n\r\n&quot;)
+			logger.error(&quot;MitmServer::tunnelToHttpsSlave failed to get port for host &quot;, err)
+			// log the exception
+		}else{
+			logger.info(&quot;MitmServer::tunnelToHttpsSlave port : &quot;, portToSlave)
+			this.tunnel(req, socket, &#x27;localhost&#x27;, portToSlave);
+		}
+	})
+}
+/**
+* Called by the server object when a CONNECT request is received. The two options are:
+* 	-	if this is an https request and hostname and port are of interest (as determined by
+*		https_hostname and https_port in the options object) and the request/response are
+*		to be captured then tunnel to a https slave server
+*	-	otherwise connect to the hostname::port and tunnel to that connection	
+*
+* @method handleConnection
+* @param {IncomingMessage} req - a request from client in the form of IncomingMessage. WE need the req 
+*								so that we can pipe the message body to the slave server
+* @param {net.Socket} socket - a socket that provides connection to the client
+*/
+MitmServer.prototype.handleConnect = function(req, socket){
+	logger.info(&quot;MitmServer::handleConnect&quot;);
+	logger.log(&quot;MitmServer::handleConnect::req.url: %s req.headers :&quot;, req.url, req.headers);
+	var tmp = req.url.split(&quot;:&quot;)
+	var targetHost = tmp[0];
+	var targetPort = tmp[1];
+	var socketToTarget = net.Socket()
+	const pUrl = url.parse(req.url)
+	
+	let action = this.determineConnectAction(req)
+	switch(action){
+	case RESULT_TUNNEL:
+		logger.info(&quot;handleConnect - tunnel&quot;)
+		this.tunnel(req, socket, targetHost, targetPort)
+		break;
+	case RESULT_HTTPS_SLAVE:
+		logger.info(&quot;MitmServer::handleConnect&quot;, this.constructor.name)
+		this.tunnelToHttpsSlave(req, socket, targetHost)
+		break;
+	default:
+		throw Error(&quot;actionOnConnect - default [&quot; + action + &quot;]&quot;)
+		break;	
+	}
+	return;
+	/**
+	* Need to decide how to handle the CONNECT
+	*/
+	// Is it https through slave ? must be https port and https hostname
+	socketToTarget.on(&#x27;error&#x27;, (err)=&gt;{
+		req.socket.write(&quot;HTTP/1.1 404 Connection not established\r\n\r\n&quot;)
+		// req.end();
+		// socketToTarget.close()
+	})
+	req.socket.on(&#x27;error&#x27;, (err)=&gt;{
+		// req.end();
+		// socketToTarget.close()
+	})
+	socketToTarget.connect(targetPort, targetHost, (err)=&gt;{
+		req.socket.pipe(socketToTarget);
+		socketToTarget.pipe(req.socket);
+		req.socket.write(&quot;HTTP/1.1 200 Connection established \r\n\r\n&quot;)
+		this.emit(&#x27;tunnel&#x27;, {status: &quot;OK&quot;, port: targetPort, host: targetHost})
+	})
+}
+
+MitmServer.prototype.handleUpgrade = function(req, resp){
+	throw Error(&quot;Upgrade not implemented&quot;)
+}
+
+MitmServer.prototype.listen = function(proxyPort, proxyServername, cb){
+	logger.log(&quot;MitmServer::listening &quot;, proxyPort, proxyServername)
+	this.proxyPort = proxyPort
+	this.proxyHost = proxyServername
+	this.server.listen(this.proxyPort, proxyServername, cb)
+}
+
+MitmServer.prototype.close = function(cb){
+	logger.log(&quot;MitmServer::close &quot;)
+	this.server.close(cb)
+}
+
+
+
+    </pre>
+</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script src="../assets/vendor/prettify/prettify-min.js"></script>
+<script>prettyPrint();</script>
+<script src="../assets/js/yui-prettify.js"></script>
+<script src="../assets/../api.js"></script>
+<script src="../assets/js/api-filter.js"></script>
+<script src="../assets/js/api-list.js"></script>
+<script src="../assets/js/api-search.js"></script>
+<script src="../assets/js/apidocs.js"></script>
+</body>
+</html>

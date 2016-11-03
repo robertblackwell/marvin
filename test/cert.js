@@ -1,7 +1,10 @@
-var assert = require('assert');
+const assert = require('assert');
 
-var CertStore = require('../src/cert-store')
-var log = console.log;
+const CertStore = require('../src/cert-store')
+const Logger = require('../src/logger')
+const LogLevels = Logger.LogLevels
+Logger.disable()
+const logger = require("../src/logger").createLogger(LogLevels.DEBUG)
 
 describe('getCert', function() {
 
@@ -24,7 +27,7 @@ describe('getCert', function() {
 			log 		: function FRED(){}, 
 		})
 		cs.getCert("localhost", function(err, c){
-			log("call back",err, typeof c)
+			logger.log("call back",err, typeof c)
 			assert.equal(err, null)
 			assert.notEqual(c, null)
 			assert.notEqual(c.key === undefined, true)
@@ -47,7 +50,7 @@ describe('getCert', function() {
 			log 		: function FRED(){}
 		})
 		cs.getSecureContext("whiteacorn", function(err, ctx){
-			log("secureContext call back",err, typeof ctx)
+			logger.log("secureContext call back",err, typeof ctx)
 			assert.equal(err, null)
 			assert.notEqual(ctx, null)
 			assert.equal(ctx.constructor.name, "SecureContext")

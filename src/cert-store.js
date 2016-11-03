@@ -32,7 +32,7 @@ module.exports = class CertStore {
 		_.defaults(this.options, options, {
 			log: function nolog(){}
 		})
-
+		// console.log(options)
 		this.dir = options.certDir
 		if( ! testFileExists(this.options.certDir) ) throw Error("certDir " + this.options.certDir + " does not exist")
 		this.caCert = options.caCertPath
@@ -43,6 +43,11 @@ module.exports = class CertStore {
 		this.queued = {}
 		mkdirp.sync(options.certDir)
 		this.log = this.options.log
+	}
+	getCACert(){
+		const certificatePath = this.caPath();
+		const ca = fs.readFileSync(certificatePath, {encoding: 'utf-8'});	
+		return ca;
 	}
 	getCert( hostname, cb) {
 		var store = this

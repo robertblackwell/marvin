@@ -1,67 +1,49 @@
-var url = require('url')
-var request = require('request')
-var Mitm 	= require("../src/mitm-server")
-var assert 	= require("assert")
-var util	= require("util")
-var inspect = require("util").inspect
-var http 	= require("http")
-var fs 		= require("fs")
+const url = require('url')
+const request = require('request')
+const Mitm 	= require("../src/mitm-server")
+const assert 	= require("assert")
+const util	= require("util")
+const inspect = require("util").inspect
+const http 	= require("http")
+const fs 		= require("fs")
 
-var _ = require("underscore")
-var TestServers = require("../test/helpers/test-servers")
-var Options	= require("./helpers/config")
+const _ = require("underscore")
+const Logger = require("../src/logger")
 
-var createTestHttp = TestServers.createHttp
+const TestServers = require("../test/helpers/test-servers")
+const Helpers = require("./helpers/functions")
 
-function definePaths(dispatcher){
-	// Test GET with query string
-	dispatcher.onGet("/test", function(req, resp){
-		var bObj = {
-			protocol: req.protocol,
-			url 	: req.url,
-			method	: req.method,
-			query	: url.parse(req.url, true).query,
-			body	: req.body,
-			headers	: req.headers
-	    }
-		resp.writeHead(200, {'Content-type' : 'text/plain'})
-		resp.write(JSON.stringify(bObj))
-		resp.end()		
-	})
-	// Test POST with body
-	dispatcher.onPost("/test", function(req, resp){
-		var bObj = {
-		      protocol: req.protocol,
-		      method:   req.method,
-		      body:     req.body,
-		      headers:  req.headers
-	    }
-		resp.writeHead(200, {'Content-type' : 'text/plain'})
-		resp.write(JSON.stringify(bObj))
-		resp.end()
-	})		
-}
+let Options	= require("./helpers/config")
+
+let verbose = true
+let tlog = Helpers.testLogger(verbose).log
+Logger.disable()
 
 describe("a few simple tests with a node http server so that we can test different methods and body", function(done){
-
-	var mitm;
-	var remote;
+	let mitm;
+	let remote;
+	let serverPort = 9990
+	let proxyPort = 4001
 
 	before(function(done){
-		remote = createTestHttp(definePaths)
-		remote.listen(9990, "127.0.0.1", function(){
-			mitm = new Mitm(Options.options)
-			mitm.listen(4001, "127.0.0.1", function(){
-				done()
-			})
+		Helpers.startHTTPServers(serverPort, proxyPort, Options, (r, m)=>{
+			remote = r; mitm = m; done()
 		})
+		// remote = TestServers.createHttp()
+		// remote.listen(9990, "127.0.0.1", function(){
+		// 	mitm = new Mitm(Options)
+		// 	mitm.listen(4001, "127.0.0.1", function(){
+		// 		done()
+		// 	})
+		// })
 	})
 	after(function(done){
-		remote.close(function(){
-			mitm.close(()=>{
-				done()			
-			})
-		})
+		Helpers.closeServers(remote, mitm, done)
+		// remote.close(function(){
+		// 	mitm.close(()=>{
+		// 		done()
+		// 	})
+		// })
 	})
 	
 	it("proxy GET request get whiteacorn/ctl/ ", function(done){
@@ -78,7 +60,7 @@ describe("a few simple tests with a node http server so that we can test differe
 				}
 				assert.equal(res.statusCode, 200) // successful request
 				assert.equal(body.includes("Whiteacorn - Admin"), true) // got the correct page
-				assert.notEqual( typeof res.headers["mitm-proxy"], "undefined") //the Mitm-proxy actually ptocessed it
+				assert.notEqual( typeof res.headers["mitm"], "undefined") //the Mitm-proxy actually ptocessed it
 				done()
 			}
 		);
@@ -95,7 +77,7 @@ describe("a few simple tests with a node http server so that we can test differe
 					done();
 				}
 				assert.equal(res.statusCode, 200) // successful request
-				var bodyObj = JSON.parse(body)
+				let bodyObj = JSON.parse(body)
 				assert.notEqual(bodyObj,null)
 				assert.equal(bodyObj.method, "GET")
 				assert.equal(bodyObj.headers.host, "127.0.0.1:9990")
@@ -118,7 +100,7 @@ describe("a few simple tests with a node http server so that we can test differe
 					done();
 				}
 				assert.equal(res.statusCode, 200) // successful request
-				var bodyObj = JSON.parse(body)
+				let bodyObj = JSON.parse(body)
 				assert.notEqual(bodyObj,null)
 				assert.equal(bodyObj.method, "GET")
 				assert.equal(bodyObj.headers.host, "127.0.0.1:9990")
@@ -128,7 +110,7 @@ describe("a few simple tests with a node http server so that we can test differe
 		);
 	})
 	it("direct POST request to test server - with body", function(done){
-		var bodyText = "This is some BODY text";
+		let bodyText = "This is some BODY text";
 		request({
 			method: "POST",
 		    url: 'http://127.0.0.1:9990/test',
@@ -143,7 +125,7 @@ describe("a few simple tests with a node http server so that we can test differe
 				}
 
 				assert.equal(res.statusCode, 200) // successful request
-				var bodyObj = JSON.parse(body)
+				let bodyObj = JSON.parse(body)
 				assert.notEqual(bodyObj,null)
 				assert.equal(bodyObj.method, "POST")
 				assert.equal(bodyObj.headers.host, "127.0.0.1:9990")
@@ -154,30 +136,35 @@ describe("a few simple tests with a node http server so that we can test differe
 	})
 	it("proxy POST request to test server - with body, also tests proxy 'finish' event", function(done){
 		
-		var signalDone = _.after(2, function(){
+		let signalDone = _.after(2, function(){
 			done()
 		})
 
-		mitm.on("finish", function(req, resp){
+		mitm.on("finish", function(tx){
 			// get here only if we got the event from mitm
-			signalDone();
-			return;
-			console.log("GOT AN EVENT FROM MITM", req.constructor.name, resp.constructor.name)
-			console.log("==============================================================================")
-			console.log("HTTP/"+req.httpVersion)
-			console.log(req.method)
-			console.log(req.url)
-			console.log(req.headers)
-			console.log(req.rawBody.toString())
-			console.log("-----------------------------------------------------------------------------")
-			console.log("HTTP/"+resp.httpVersion)
-			console.log(resp.statusCode)
-			console.log(resp.statusMessage)
-			console.log(resp.headers)
-			console.log(resp.rawBody.toString())
-			console.log("-----------------------------------------------------------------------------")
+			// signalDone();
+			// return;
+			tlog("GOT AN EVENT FROM MITM")
+			tlog("==============================================================================")
+			tlog("report type: " + tx.type)
+			tlog("report protocol: " + tx.protocol)
+			tlog("HTTP/"+tx.request.httpVersion)
+			tlog(tx.request.method)
+			tlog(tx.request.url)
+			tlog(tx.request.headers)
+			tlog(tx.request.rawBody)
+			// tlog(tx.request.rawBody.toString())
+			tlog("-----------------------------------------------------------------------------")
+			tlog("HTTP/"+tx.response.httpVersion)
+			tlog(tx.response.statusCode)
+			tlog(tx.response.statusMessage)
+			tlog(tx.response.headers)
+			tlog(tx.response.rawBody)
+			// tlog(tx.response.rawBody.toString())
+			tlog("-----------------------------------------------------------------------------")
+			signalDone()
 		})
-		var bodyText = "This is SOME body text";
+		let bodyText = "This is SOME body text";
 		
 		request({
 			method: "POST",
@@ -194,7 +181,7 @@ describe("a few simple tests with a node http server so that we can test differe
 				}
 
 				assert.equal(res.statusCode, 200) // successful request
-				var bodyObj = JSON.parse(body)
+				let bodyObj = JSON.parse(body)
 				assert.notEqual(bodyObj,null)
 				assert.equal(bodyObj.method, "POST")
 				assert.equal(bodyObj.headers.host, "127.0.0.1:9990")

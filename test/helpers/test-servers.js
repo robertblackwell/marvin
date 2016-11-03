@@ -1,9 +1,49 @@
-var http 	= require("http")
-var https 	= require("https")
-var dispatcher = require('httpdispatcher')
-var fs = require('fs')
+const http 	= require("http")
+const https 	= require("https")
+const dispatcher = require('httpdispatcher')
+const fs = require('fs')
+const url = require('url')
 
-function createHttp(definePaths)
+const testServerOptions = {
+  key: fs.readFileSync(__dirname + '/../helpers/certs/server-key.pem'),
+  cert: fs.readFileSync(__dirname + '/../helpers/certs/server-cert.pem')
+};
+
+
+function testDefinePaths(dispatcher){
+	// Test GET with query string
+	dispatcher.onGet("/test", function(req, resp){
+		var bObj = {
+			protocol: req.protocol,
+			url 	: req.url,
+			method	: req.method,
+			query	: url.parse(req.url, true).query,
+			body	: req.body,
+			headers	: req.headers
+	    }
+		resp.writeHead(200, {'Content-type' : 'text/plain'})
+		resp.write(JSON.stringify(bObj))
+		resp.end()		
+	})
+	// Test POST with body
+	dispatcher.onPost("/test", function(req, resp){
+		var bObj = {
+		      protocol: req.protocol,
+		      method:   req.method,
+		      body:     req.body,
+		      headers:  req.headers
+	    }
+		resp.writeHead(200, {'Content-type' : 'text/plain'})
+		resp.write(JSON.stringify(bObj))
+		resp.end()
+	})		
+}
+
+
+function createHttp(){
+	return _createHttp(testDefinePaths)
+}
+function _createHttp(definePaths)
 {
 	definePaths(dispatcher)
 	var server = http.createServer(function(req, resp){
@@ -12,14 +52,18 @@ function createHttp(definePaths)
 	return server;
 }
 
-function createHttps(options, definePaths)
+function createHttps(){
+	return _createHttps(testServerOptions, testDefinePaths)
+}
+
+function _createHttps(options, definePaths)
 {
 	definePaths(dispatcher)	
-	var keyFn = __dirname+"/certs/server-key.pem";
-	var certFn = __dirname+"/certs/server-cert.pem";
+	const keyFn = __dirname+"/certs/server-key.pem";
+	const certFn = __dirname+"/certs/server-cert.pem";
 	if( options.key === undefined ) options.key = fs.readFileSync(keyFn);
 	if( options.cert === undefined ) options.cert = fs.readFileSync(certFn);
-	var server = https.createServer(options, function(req, resp){
+	let server = https.createServer(options, function(req, resp){
 		// console.log("https test server request ", req.method, req.url)
 		dispatcher.dispatch(req, resp)
 	})	

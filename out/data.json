@@ -1,0 +1,932 @@
+{
+    "project": {},
+    "files": {
+        "src/cert-store.js": {
+            "name": "src/cert-store.js",
+            "modules": {},
+            "classes": {},
+            "fors": {},
+            "namespaces": {}
+        },
+        "src/config.js": {
+            "name": "src/config.js",
+            "modules": {},
+            "classes": {
+                "Options_object": 1
+            },
+            "fors": {},
+            "namespaces": {}
+        },
+        "src/connection-manager.js": {
+            "name": "src/connection-manager.js",
+            "modules": {},
+            "classes": {},
+            "fors": {},
+            "namespaces": {}
+        },
+        "src/forwarding-agent.js": {
+            "name": "src/forwarding-agent.js",
+            "modules": {},
+            "classes": {
+                "ForwardingAgent": 1
+            },
+            "fors": {},
+            "namespaces": {}
+        },
+        "src/https-slave.js": {
+            "name": "src/https-slave.js",
+            "modules": {},
+            "classes": {},
+            "fors": {},
+            "namespaces": {}
+        },
+        "src/mitm-report.js": {
+            "name": "src/mitm-report.js",
+            "modules": {},
+            "classes": {},
+            "fors": {},
+            "namespaces": {}
+        },
+        "src/mitm-server.js": {
+            "name": "src/mitm-server.js",
+            "modules": {},
+            "classes": {
+                "MitmServer": 1
+            },
+            "fors": {},
+            "namespaces": {}
+        },
+        "src/slave-master.js": {
+            "name": "src/slave-master.js",
+            "modules": {},
+            "classes": {
+                "HttpsSlaveMaster": 1,
+                "SniSlaveMaster": 1,
+                "PerHostnameSlaveMaster": 1
+            },
+            "fors": {},
+            "namespaces": {}
+        }
+    },
+    "modules": {},
+    "classes": {
+        "Options_object": {
+            "name": "Options_object",
+            "shortname": "Options_object",
+            "classitems": [],
+            "plugins": [],
+            "extensions": [],
+            "plugin_for": [],
+            "extension_for": [],
+            "file": "src/config.js",
+            "line": 13,
+            "itemtype": "config"
+        },
+        "ForwardingAgent": {
+            "name": "ForwardingAgent",
+            "shortname": "ForwardingAgent",
+            "classitems": [],
+            "plugins": [],
+            "extensions": [],
+            "plugin_for": [],
+            "extension_for": [],
+            "file": "src/forwarding-agent.js",
+            "line": 18,
+            "description": "This class implements the proxy forwarding process for http/https protocols.\nTakes a client req (IncomingMessage), \n\t-\tmodifies headers as necessary, \n\t-\tpasses it up to the target server,\n\t-\tgets the response from the target server\n\t-\tmodifies that response as necessary\n\t-\tsends it down to the originating client\n\t-\tand notifies the http(s) transaction - say more about this"
+        },
+        "MitmServer": {
+            "name": "MitmServer",
+            "shortname": "MitmServer",
+            "classitems": [],
+            "plugins": [],
+            "extensions": [],
+            "plugin_for": [],
+            "extension_for": [],
+            "file": "src/mitm-server.js",
+            "line": 46,
+            "description": "This is the main entry point to the proxy process. It wires together all the bits \nrequired to monitor traffic, select the appropriate processing fo the traffic\nand is the distribution center for sending intercepted traffic to the viewing\nprocess.",
+            "is_constructor": 1,
+            "params": [
+                {
+                    "name": "options",
+                    "description": "",
+                    "type": "Options Object"
+                }
+            ]
+        },
+        "HttpsSlaveMaster": {
+            "name": "HttpsSlaveMaster",
+            "shortname": "HttpsSlaveMaster",
+            "classitems": [],
+            "plugins": [],
+            "extensions": [],
+            "plugin_for": [],
+            "extension_for": [],
+            "file": "src/slave-master.js",
+            "line": 20,
+            "description": "This class controls the creation and access to slave https servers.\n\nIt exposes a single method \n\n\t\tgetPortForHost(hostname, cb) - cb(err, port)\n \n\tThis method will find, or create if necessary, an instance of a https server that\ncan operate as a server for the given hostname and will return a TCP\nport number on which a client can connect to the designated server\n\nTwo different strategies are available:\n\nnon-sni (options.sni === undefined or options.sni ===false)\n\t===========================================================\n\n\tThis strategy creates a new slave https server for each hostname/servername\nand keep references to those server instances so that they can be re-used.\n\tEach server instance operates on behalf of only a signle hostname and\n\tis give a key and certificate appropriate to that hostname when it is created\n\n\tsni (options.sni===true)\n\t========================\n\n\tThis strategy creates only a single https server instances and has it operate on behalf \n\tof multiple servernames via the SNICallback feature of https.Server.\n\tThis is the preferred, and default, strategy.\n\n\n\tIn both cases this class relies on an instance of the CertStore class to manage and when necessary\n\tcreate appropriate signed certificates. See CertStore for more info"
+        },
+        "SniSlaveMaster": {
+            "name": "SniSlaveMaster",
+            "shortname": "SniSlaveMaster",
+            "classitems": [],
+            "plugins": [],
+            "extensions": [],
+            "plugin_for": [],
+            "extension_for": [],
+            "file": "src/slave-master.js",
+            "line": 117,
+            "description": "A HttpsSlaveMaster derived class that can operate on behalf of multiple host names."
+        },
+        "PerHostnameSlaveMaster": {
+            "name": "PerHostnameSlaveMaster",
+            "shortname": "PerHostnameSlaveMaster",
+            "classitems": [],
+            "plugins": [],
+            "extensions": [],
+            "plugin_for": [],
+            "extension_for": [],
+            "file": "src/slave-master.js",
+            "line": 182,
+            "description": "A HttpsSlaveMaster derived class, instances of which can operate on behalf of a __single__ host names.\nif this type of slave is used one must be created for each distinct upstream hostname"
+        }
+    },
+    "elements": {},
+    "classitems": [
+        {
+            "file": "src/cert-store.js",
+            "line": 8,
+            "description": "Arguments\n\toptions : An options object with the following properties\n\t\ttype: \tcurrently unused\n\t\tdir : \tfull path to an existing directory where a CertStore \n\t\t\t\tobject will place two files \n\t\t\t\t\t<hostname>-key.pem and \n\t\t\t\t\t<hostname>-cert.pem files\n\t\t\t\tfor each host/server it supports\n\n\t\tlog :",
+            "class": "Options_object"
+        },
+        {
+            "file": "src/config.js",
+            "line": 18,
+            "description": "These regex determine which requests and responses have their body content captured by the \nmitm. The purposes of these selectors is to ensure that we dont try to capture \nthe body of large requests or responses entirely in a Buffer (the mitm forwarding\nprocess uses piping to avoid fully capturing a body, the body only needs to\nbe captured for displaying/monitoring). For example images and videos\nare prime candidates. They often are large files and there is usually little\ninterest in the content of the body of such requests or responses.",
+            "itemtype": "attribute",
+            "name": "capture",
+            "class": "Options_object"
+        },
+        {
+            "file": "src/config.js",
+            "line": 33,
+            "description": "settings for monitoring https traffic\n\npaths to a directory where x509 certificates and keys will be stored for\neach servername that Marvin intercepts. These are mandatory, Marvin cannot determine defaults for these",
+            "itemtype": "attribute",
+            "name": "certDir",
+            "class": "Options_object"
+        },
+        {
+            "file": "src/config.js",
+            "line": 41,
+            "description": "The path to the certificate for the Certificate Authority that will sign\nall the servername certificates. This is also manditory as no sensible default is possible",
+            "itemtype": "attribute",
+            "name": "caCertPath",
+            "class": "Options_object"
+        },
+        {
+            "file": "src/config.js",
+            "line": 47,
+            "description": "The path to the public key for the Certificate Authority that will sign\nall the servername certificates. This is also manditory as no sensible default is possible",
+            "itemtype": "attribute",
+            "name": "caKeyPath",
+            "class": "Options_object"
+        },
+        {
+            "file": "src/config.js",
+            "line": 54,
+            "description": "CONNECT requests for hostname on any of these ports will be treated as a\nhttps request. And if the servername matches one of the entries in {https_host}\nthen the request will be monitored and the request/response pair\nprovided. If the servername DOES NOT match one of {https_hosts}\nthe reuqested will be tunneled anonamously",
+            "itemtype": "attribute",
+            "name": "https_hosts Regex to match hostnames",
+            "class": "Options_object"
+        },
+        {
+            "file": "src/config.js",
+            "line": 63,
+            "itemtype": "attribute",
+            "name": "https_ports - port numbers that will be treated as https ports",
+            "class": "Options_object"
+        },
+        {
+            "file": "src/config.js",
+            "line": 68,
+            "description": "Determines how https operates to monitor https traffic. If sni is present and sni === true\na single https server backend handles all mitm monitoring for https traffic. That single server\nuses the SNIcallback property of https.Server to act on behalf of multiple servernames.\n\nIf sni === undefined or sni === false. A new backend https.Server instance is created for\neach hostname. These are cached for reuse on subsequent requests to the same hostname",
+            "itemtype": "attribute",
+            "name": "sni - if tre use SNI version of HttpsSlaveMaster",
+            "type": "Bool",
+            "class": "Options_object"
+        },
+        {
+            "file": "src/connection-manager.js",
+            "line": 1,
+            "description": "This comment is more by way of a design note as at the time of writting the classes in this file\nare really stubs.\n\nThe plan is to have a connection manager that controls a pool of sockets that are connected to\nremote hosts (identified by host:port) and to keep at least a selection of these open\nso that we dont pay the overhead of creating a new connection on every \"upStream\" request.\n\nTo achieve this the ConnectionManager will be a singleton (to manage one pool of connections)\nand exposes only one method \"getConnectionForHostPort\".\n\nThe connection manager returns an instance of the \"Connection\" class asynchronouly to each \ncall to\"getConnectionHostPort\" and this \"Connection\" knows how to send Http and Https\nrquests. \n\nNow in the real world each host:port combination also implies a protocol as the listener on\nthat host:port knows what protocol it is able to speak. But we have to inform the connection manager\n(and hence the connection) what the protocol is so that it knows what type of message to send.\nHence the getConnectionForHostPort takes a protocol (http or https) parameter, and connections\nstore the protocol in an instance variable as well as the host:port \n\nLike nodejs http.request and https.request a connection is a stream and the body of a request\ncan be piped into the connection instance",
+            "class": "ForwardingAgent"
+        },
+        {
+            "file": "src/connection-manager.js",
+            "line": 28,
+            "description": "The V0 versions of these two classes are a simple/dumb implementation",
+            "class": "ForwardingAgent"
+        },
+        {
+            "file": "src/connection-manager.js",
+            "line": 48,
+            "description": "Connection manage ris like a node agent",
+            "class": "ForwardingAgent"
+        },
+        {
+            "file": "src/forwarding-agent.js",
+            "line": 30,
+            "is_constructor": 1,
+            "params": [
+                {
+                    "name": "protocol",
+                    "description": "- one of https: http:",
+                    "type": "String"
+                },
+                {
+                    "name": "options",
+                    "description": "",
+                    "type": "Options object"
+                }
+            ],
+            "class": "ForwardingAgent"
+        },
+        {
+            "file": "src/forwarding-agent.js",
+            "line": 41,
+            "description": "This method does all the heavy lifting of the proxying or request forwarding\nprocess and also provides to hook for extracting the request/response for monitoring.\n\nThe procss is roughly as follows:\n\t-\ttake the initial client request \"req\" (of type IncomingMessage) and from this construct a \n\t\t(maybe modified) request to the target server. This will at least involve taking the proxy stuff out of\n\t\tthe headers.\n\n\t-\twhen the response (of type IncomingMessage) arrives from the target server, from it build (fill in the details of)\n\t\tthe response \"resp\" (of type ServerResponse )that is destined for the initial client\n\t\tand again there might be some header modifications.\n\n\t-\tonce the response to the initial client signals \"finish\" - meaning all responsibility for this response \n\t\thas passed to the OS signal the outside world by triggering a \"finish\" event on the \n\t\t\n\t\tMitm object - @TODO - this is not the correct object now\n\n\t\tso watches can log the transaction. The event name \"finish\" is probably a bit unfortunate\n\n\t-\tthe finish event handler has signature function(req, res) where\n\t\t-\treq is the original client req of type IncomingMessage to which has been added a rawBody property\n\t\t\tof type Buffer\n\t\t-\tres is the response from the target server of type IncomingMessage to which (in selected cases) has\n\t\t\tbeen added a property rawBody. The rawBody is only added if this.shouldCollectResponseBody() returns true",
+            "itemtype": "method",
+            "name": "forward",
+            "params": [
+                {
+                    "name": "req",
+                    "description": "- \tthe request message from the original client",
+                    "type": "Node::IncomeingMessage"
+                },
+                {
+                    "name": "resp",
+                    "description": "- \tthe response to be sent to the initial client",
+                    "type": "Node::ServerResponse"
+                },
+                {
+                    "name": "cb",
+                    "description": "signals http(s) transaction complete\t\t-\t@todo - FIX",
+                    "type": "Function"
+                }
+            ],
+            "class": "ForwardingAgent"
+        },
+        {
+            "file": "src/forwarding-agent.js",
+            "line": 73,
+            "description": "Parse the url in prep for forwarding the request upstream\nThis stuff is still a problem",
+            "class": "ForwardingAgent"
+        },
+        {
+            "file": "src/forwarding-agent.js",
+            "line": 98,
+            "description": "strip out headers that should not be passed upstream and add any procy headers\nthat should be added.",
+            "todo": [
+                "- research what else I have to do"
+            ],
+            "class": "ForwardingAgent"
+        },
+        {
+            "file": "src/forwarding-agent.js",
+            "line": 120,
+            "description": "This is a hack and needs to be fixed @FIX",
+            "class": "ForwardingAgent"
+        },
+        {
+            "file": "src/forwarding-agent.js",
+            "line": 148,
+            "description": "This should be easier - lets try promises so that it looks like\n\n\tgetConnection(protocol, host, port)\n\t.then(sendUpstreamRequest) \t\t\t\t\t\t\n\t.then(decodeUpStreamResponseAndSendToClient)\t\n\t.then(notifyHttpTransactionFinished)",
+            "class": "ForwardingAgent"
+        },
+        {
+            "file": "src/forwarding-agent.js",
+            "line": 157,
+            "description": "modify the reponse if necessary. At this time only add a mitm header to\nso the forwarding process can be detected",
+            "class": "ForwardingAgent"
+        },
+        {
+            "file": "src/forwarding-agent.js",
+            "line": 163,
+            "description": "now send the response downstream to the original client",
+            "class": "ForwardingAgent"
+        },
+        {
+            "file": "src/forwarding-agent.js",
+            "line": 167,
+            "description": "forward the response body downstream\nand possibly collect the response body provided the content-type is appropriate\ndo this here to ensure we dont try collecting the contents of very large\nresponse bodies\nother cleaning up of the request body and response body for display purposes\ncan take place elsewhere",
+            "class": "ForwardingAgent"
+        },
+        {
+            "file": "src/forwarding-agent.js",
+            "line": 187,
+            "description": "at this point the entire req/resp cycle is over so package it up \nand send a \"notification\" to who-ever.",
+            "note": "- assumes \"this\" is the Mitm object",
+            "class": "ForwardingAgent"
+        },
+        {
+            "file": "src/forwarding-agent.js",
+            "line": 197,
+            "description": "get a connection and when we have it send the request upstream",
+            "class": "ForwardingAgent"
+        },
+        {
+            "file": "src/forwarding-agent.js",
+            "line": 210,
+            "description": "Need to do something better with this",
+            "class": "ForwardingAgent"
+        },
+        {
+            "file": "src/forwarding-agent.js",
+            "line": 216,
+            "description": "pipe the request body upstream to the target server\nand also save the request body",
+            "class": "ForwardingAgent"
+        },
+        {
+            "file": "src/forwarding-agent.js",
+            "line": 244,
+            "description": "Determine what types of response content we want to collect and signal\non a finish event. The goal here is ONLY to prevent collecting into a buffer a \nlarge reponse body that we will probably never look at.\nFor example - Probably do not want to collect image/ video/ audio/ types of content\nPut another way only text/*  and application/* will be collected",
+            "itemtype": "method",
+            "name": "shouldCollectResponseBody",
+            "params": [
+                {
+                    "name": "res",
+                    "description": "- response from upstream server",
+                    "type": "IncomingMessage"
+                }
+            ],
+            "class": "ForwardingAgent"
+        },
+        {
+            "file": "src/forwarding-agent.js",
+            "line": 276,
+            "description": "A utility function that in one operation pipes rStream into wStream and \n(optionally) collects the contents of the rStream into a buffer and passes it to the\ncb function.\n\nIf cb === null dont collect the contents",
+            "itemtype": "method",
+            "name": "pipeAndCollectStream",
+            "params": [
+                {
+                    "name": "rStream",
+                    "description": "- readable stream",
+                    "type": "ReadableStream"
+                },
+                {
+                    "name": "wStream",
+                    "description": "- a writeable stream",
+                    "type": "WriteableStream"
+                },
+                {
+                    "name": "cb",
+                    "description": "- function with signture (Buffer). If null - dont collect the data"
+                }
+            ],
+            "class": "ForwardingAgent"
+        },
+        {
+            "file": "src/https-slave.js",
+            "line": 8,
+            "description": "A backend server or slave is a normal https server that listens (is connected to via) a unix socket\nThe main proxy server directs traffic from CONNECT requests through an/the instance of\na backend server.\n\nTo serve as a backend for many servernames this server must use SNI callback to get the tls.secureContext\nfor any particular hostname/servername. The server makes use of the certstore class\nto manage (and if needed) create the required securecontext.\n\n\toptions (Object)\n\t\tcertStore \t\t: instance of CertStore\n\t\tlistSocketPath \t: fullpath to a unix socket on which this server will listen",
+            "class": "MitmServer"
+        },
+        {
+            "file": "src/mitm-report.js",
+            "line": 5,
+            "description": "Creates an object that reports a https tunnel",
+            "params": [
+                {
+                    "name": "status",
+                    "description": "- string"
+                },
+                {
+                    "name": "host",
+                    "description": "- string"
+                },
+                {
+                    "name": "port",
+                    "description": "- number"
+                }
+            ],
+            "return": {
+                "description": "- a report object literal"
+            },
+            "class": "MitmServer"
+        },
+        {
+            "file": "src/mitm-report.js",
+            "line": 19,
+            "description": "Creates an object that reports a http or proxied https request/response cycle where the request\nand response have been captured (not tunneled)",
+            "params": [
+                {
+                    "name": "protocol",
+                    "description": "- string http: or https:"
+                },
+                {
+                    "name": "req",
+                    "description": "- IncomingMessage"
+                },
+                {
+                    "name": "resp",
+                    "description": "- IncomingMessage"
+                }
+            ],
+            "return": {
+                "description": "- a report object literal"
+            },
+            "class": "MitmServer"
+        },
+        {
+            "file": "src/mitm-report.js",
+            "line": 38,
+            "description": "Strips out properties of interest from an IncomingMessage that re[resents a http(s) request",
+            "params": [
+                {
+                    "name": "req",
+                    "description": "",
+                    "type": "IncomingMessage"
+                }
+            ],
+            "return": {
+                "description": "literal",
+                "type": "Object"
+            },
+            "class": "MitmServer"
+        },
+        {
+            "file": "src/mitm-report.js",
+            "line": 55,
+            "description": "Strips out properties of interest from an IncomingMessage that re[resents a http(s) response",
+            "params": [
+                {
+                    "name": "resp",
+                    "description": "",
+                    "type": "IncomingMessage"
+                }
+            ],
+            "return": {
+                "description": "literal",
+                "type": "Object"
+            },
+            "class": "MitmServer"
+        },
+        {
+            "file": "src/mitm-server.js",
+            "line": 17,
+            "description": "This is the set of default options used by {MitmServer} and the classes/modules it invokes",
+            "itemtype": "config",
+            "name": "default_options",
+            "class": "MitmServer"
+        },
+        {
+            "file": "src/mitm-server.js",
+            "line": 27,
+            "description": "these options control how the proxy handles CONNECT requests\nany CONNECT to one of the given https_ports is treated as a https proxy request\nif the hostname is NOT matched by on of the entries in the array of host regexs\nthen an anonymous tunnel to established\nIf a hostname IS matched then the traffic from the client is tunneled to the \nbackend https server and the request and response are captured \nA CONNECT to one of the http_ports is probably the start of a WS/WSS handshake\nDONT KNOW HOW TO HANDLE THAT AT THE MOMENT",
+            "class": "MitmServer"
+        },
+        {
+            "file": "src/mitm-server.js",
+            "line": 81,
+            "description": "Reports a https tunnel event.",
+            "itemtype": "method",
+            "name": "reportHttpsTunnel",
+            "params": [
+                {
+                    "name": "status",
+                    "description": "",
+                    "type": "String"
+                },
+                {
+                    "name": "host",
+                    "description": "",
+                    "type": "String"
+                },
+                {
+                    "name": "port",
+                    "description": "",
+                    "type": "Number"
+                }
+            ],
+            "emits": "\"finish\"",
+            "class": "MitmServer"
+        },
+        {
+            "file": "src/mitm-server.js",
+            "line": 101,
+            "description": "Reports a http or https interchage that was intercepted.",
+            "itemtype": "method",
+            "name": "reportHttpTransaction",
+            "params": [
+                {
+                    "name": "protocol",
+                    "description": "(https: or http:)",
+                    "type": "String"
+                },
+                {
+                    "name": "req",
+                    "description": "- an https or http request",
+                    "type": "Node::IncomingMessage"
+                },
+                {
+                    "name": "resp",
+                    "description": "- an http or https response",
+                    "type": "Node::IncomingMessage"
+                }
+            ],
+            "emits": "\"finish\"",
+            "class": "MitmServer"
+        },
+        {
+            "file": "src/mitm-server.js",
+            "line": 112,
+            "description": "both the req and resp are of type IncomingMessage which contains way too much\nirrelevant data, here we will strip them down to the essential",
+            "class": "MitmServer"
+        },
+        {
+            "file": "src/mitm-server.js",
+            "line": 132,
+            "description": "We have a CONNECT request - so what are we going to do? This method works that out and returns \na code to tell the outside world",
+            "itemtype": "method",
+            "name": "determineConnectAction",
+            "params": [
+                {
+                    "name": "req",
+                    "description": "- incoming client request",
+                    "type": "Node::IncomingMessage"
+                }
+            ],
+            "return": {
+                "description": "possible values:\n\n\t-\t\"tunnel\" \t\t- set up a transparent tunnel between the client socket and the target server\n\t-\t\"https_slave\"\t- its a https CONNECT that we want to monitor - tunnel to a https slave that will monitor traffic",
+                "type": "String"
+            },
+            "note": "- currently not sure how to handle ws/wss CONNECT requests",
+            "class": "MitmServer"
+        },
+        {
+            "file": "src/mitm-server.js",
+            "line": 192,
+            "description": "Its a https connect request that we are going to MITM",
+            "class": "MitmServer"
+        },
+        {
+            "file": "src/mitm-server.js",
+            "line": 202,
+            "class": "MitmServer"
+        },
+        {
+            "file": "src/mitm-server.js",
+            "line": 213,
+            "description": "Sets up a anonymous tunnel for an https request",
+            "itemtype": "method",
+            "name": "tunnel",
+            "params": [
+                {
+                    "name": "req",
+                    "description": "- incoming client reuqest",
+                    "type": "IncomingMessage"
+                },
+                {
+                    "name": "socket",
+                    "description": "- a socket that provides connection to the client",
+                    "type": "net.Socket"
+                },
+                {
+                    "name": "targetHost",
+                    "description": "- the hostname of the target server",
+                    "type": "String"
+                },
+                {
+                    "name": "targetPort",
+                    "description": "- the port number of the target server",
+                    "type": "Number"
+                }
+            ],
+            "class": "MitmServer"
+        },
+        {
+            "file": "src/mitm-server.js",
+            "line": 273,
+            "description": "This method tunnels to one of the https slave servers if it has been determined that this\nhttps interaction will be captured.",
+            "itemtype": "method",
+            "name": "tunnelToHttpsSlave",
+            "params": [
+                {
+                    "name": "req",
+                    "description": "- a request from client in the form of IncomingMessage. WE need the req \n\t\t\t\t\t\t\t\tso that we can pipe the message body to the slave server",
+                    "type": "IncomingMessage"
+                },
+                {
+                    "name": "socket",
+                    "description": "- a socket that provides connection to the client",
+                    "type": "net.Socket"
+                },
+                {
+                    "name": "targetHost",
+                    "description": "- the hostname of the target server",
+                    "type": "String"
+                }
+            ],
+            "class": "MitmServer"
+        },
+        {
+            "file": "src/mitm-server.js",
+            "line": 302,
+            "description": "Called by the server object when a CONNECT request is received. The two options are:\n\t-\tif this is an https request and hostname and port are of interest (as determined by\n\t\thttps_hostname and https_port in the options object) and the request/response are\n\t\tto be captured then tunnel to a https slave server\n\t-\totherwise connect to the hostname::port and tunnel to that connection",
+            "itemtype": "method",
+            "name": "handleConnection",
+            "params": [
+                {
+                    "name": "req",
+                    "description": "- a request from client in the form of IncomingMessage. WE need the req \n\t\t\t\t\t\t\t\tso that we can pipe the message body to the slave server",
+                    "type": "IncomingMessage"
+                },
+                {
+                    "name": "socket",
+                    "description": "- a socket that provides connection to the client",
+                    "type": "net.Socket"
+                }
+            ],
+            "class": "MitmServer"
+        },
+        {
+            "file": "src/mitm-server.js",
+            "line": 338,
+            "description": "Need to decide how to handle the CONNECT",
+            "class": "MitmServer"
+        },
+        {
+            "file": "src/slave-master.js",
+            "line": 55,
+            "description": "A factory method to construct slave servers",
+            "itemtype": "method",
+            "name": "createHttpsSlaveMaster",
+            "static": 1,
+            "class": "HttpsSlaveMaster"
+        },
+        {
+            "file": "src/slave-master.js",
+            "line": 64,
+            "is_constructor": 1,
+            "params": [
+                {
+                    "name": "options",
+                    "description": "",
+                    "type": "Options object"
+                },
+                {
+                    "name": "completionCb",
+                    "description": "- to be called when the forwarding agent has processed a complete request/responbse cycle",
+                    "type": "Function"
+                }
+            ],
+            "class": "HttpsSlaveMaster"
+        },
+        {
+            "file": "src/slave-master.js",
+            "line": 91,
+            "description": "Forward the clients request upstream to the originally intended server",
+            "params": [
+                {
+                    "name": "res",
+                    "description": "",
+                    "type": "IncomingMessage"
+                },
+                {
+                    "name": "resp",
+                    "description": "",
+                    "type": "ServerRespsonse"
+                }
+            ],
+            "uses": [
+                "an instance of {ForwardingAgent} to perform this action"
+            ],
+            "class": "HttpsSlaveMaster"
+        },
+        {
+            "file": "src/slave-master.js",
+            "line": 127,
+            "description": "Get a port on the local system through which a suitable slave server can be\ncommunicated with",
+            "itemtype": "method",
+            "name": "getPortForHost",
+            "params": [
+                {
+                    "name": "hostname",
+                    "description": "",
+                    "type": "String"
+                },
+                {
+                    "name": "cb",
+                    "description": "- to be called when the port has been obtained",
+                    "type": "Function"
+                }
+            ],
+            "class": "SniSlaveMaster"
+        },
+        {
+            "file": "src/slave-master.js",
+            "line": 193,
+            "description": "Get a port on the local system through which a suitable slave server can be\ncommunicated with",
+            "itemtype": "method",
+            "name": "getPortForHost",
+            "params": [
+                {
+                    "name": "hostname",
+                    "description": "",
+                    "type": "String"
+                },
+                {
+                    "name": "cb",
+                    "description": "- to be called when the port has been obtained",
+                    "type": "Function"
+                }
+            ],
+            "class": "PerHostnameSlaveMaster"
+        },
+        {
+            "file": "src/slave-master.js",
+            "line": 250,
+            "description": "A factor method that creates the appropriate type of HttpsSlaveMaster",
+            "itemtype": "method",
+            "name": "_createHttpsSlaveMaster",
+            "static": 1,
+            "params": [
+                {
+                    "name": "UNKNOWN",
+                    "description": "",
+                    "type": "Options object"
+                },
+                {
+                    "name": "handler",
+                    "description": "- a function that will handle req/resp pairs for sending upstream",
+                    "type": "Function"
+                }
+            ],
+            "class": "PerHostnameSlaveMaster"
+        },
+        {
+            "file": "src/slave-master.js",
+            "line": 282,
+            "description": "Factory",
+            "class": "PerHostnameSlaveMaster"
+        }
+    ],
+    "warnings": [
+        {
+            "message": "unknown tag: note",
+            "line": " src/forwarding-agent.js:187"
+        },
+        {
+            "message": "replacing incorrect tag: function with method",
+            "line": " src/forwarding-agent.js:276"
+        },
+        {
+            "message": "replacing incorrect tag: returns with return",
+            "line": " src/mitm-report.js:5"
+        },
+        {
+            "message": "replacing incorrect tag: returns with return",
+            "line": " src/mitm-report.js:19"
+        },
+        {
+            "message": "replacing incorrect tag: returns with return",
+            "line": " src/mitm-report.js:38"
+        },
+        {
+            "message": "replacing incorrect tag: returns with return",
+            "line": " src/mitm-report.js:55"
+        },
+        {
+            "message": "unknown tag: emits",
+            "line": " src/mitm-server.js:81"
+        },
+        {
+            "message": "unknown tag: emits",
+            "line": " src/mitm-server.js:101"
+        },
+        {
+            "message": "unknown tag: note",
+            "line": " src/mitm-server.js:132"
+        },
+        {
+            "message": "param name missing: {Options object}",
+            "line": " src/slave-master.js:250"
+        },
+        {
+            "message": "Missing item type\nArguments\n\toptions : An options object with the following properties\n\t\ttype: \tcurrently unused\n\t\tdir : \tfull path to an existing directory where a CertStore \n\t\t\t\tobject will place two files \n\t\t\t\t\t<hostname>-key.pem and \n\t\t\t\t\t<hostname>-cert.pem files\n\t\t\t\tfor each host/server it supports\n\n\t\tlog :",
+            "line": " src/cert-store.js:8"
+        },
+        {
+            "message": "Missing item type\nThis comment is more by way of a design note as at the time of writting the classes in this file\nare really stubs.\n\nThe plan is to have a connection manager that controls a pool of sockets that are connected to\nremote hosts (identified by host:port) and to keep at least a selection of these open\nso that we dont pay the overhead of creating a new connection on every \"upStream\" request.\n\nTo achieve this the ConnectionManager will be a singleton (to manage one pool of connections)\nand exposes only one method \"getConnectionForHostPort\".\n\nThe connection manager returns an instance of the \"Connection\" class asynchronouly to each \ncall to\"getConnectionHostPort\" and this \"Connection\" knows how to send Http and Https\nrquests. \n\nNow in the real world each host:port combination also implies a protocol as the listener on\nthat host:port knows what protocol it is able to speak. But we have to inform the connection manager\n(and hence the connection) what the protocol is so that it knows what type of message to send.\nHence the getConnectionForHostPort takes a protocol (http or https) parameter, and connections\nstore the protocol in an instance variable as well as the host:port \n\nLike nodejs http.request and https.request a connection is a stream and the body of a request\ncan be piped into the connection instance",
+            "line": " src/connection-manager.js:1"
+        },
+        {
+            "message": "Missing item type\nThe V0 versions of these two classes are a simple/dumb implementation",
+            "line": " src/connection-manager.js:28"
+        },
+        {
+            "message": "Missing item type\nConnection manage ris like a node agent",
+            "line": " src/connection-manager.js:48"
+        },
+        {
+            "message": "Missing item type",
+            "line": " src/forwarding-agent.js:30"
+        },
+        {
+            "message": "Missing item type\nParse the url in prep for forwarding the request upstream\nThis stuff is still a problem",
+            "line": " src/forwarding-agent.js:73"
+        },
+        {
+            "message": "Missing item type\nstrip out headers that should not be passed upstream and add any procy headers\nthat should be added.",
+            "line": " src/forwarding-agent.js:98"
+        },
+        {
+            "message": "Missing item type\nThis is a hack and needs to be fixed @FIX",
+            "line": " src/forwarding-agent.js:120"
+        },
+        {
+            "message": "Missing item type\nThis should be easier - lets try promises so that it looks like\n\n\tgetConnection(protocol, host, port)\n\t.then(sendUpstreamRequest) \t\t\t\t\t\t\n\t.then(decodeUpStreamResponseAndSendToClient)\t\n\t.then(notifyHttpTransactionFinished)",
+            "line": " src/forwarding-agent.js:148"
+        },
+        {
+            "message": "Missing item type\nmodify the reponse if necessary. At this time only add a mitm header to\nso the forwarding process can be detected",
+            "line": " src/forwarding-agent.js:157"
+        },
+        {
+            "message": "Missing item type\nnow send the response downstream to the original client",
+            "line": " src/forwarding-agent.js:163"
+        },
+        {
+            "message": "Missing item type\nforward the response body downstream\nand possibly collect the response body provided the content-type is appropriate\ndo this here to ensure we dont try collecting the contents of very large\nresponse bodies\nother cleaning up of the request body and response body for display purposes\ncan take place elsewhere",
+            "line": " src/forwarding-agent.js:167"
+        },
+        {
+            "message": "Missing item type\nat this point the entire req/resp cycle is over so package it up \nand send a \"notification\" to who-ever.",
+            "line": " src/forwarding-agent.js:187"
+        },
+        {
+            "message": "Missing item type\nget a connection and when we have it send the request upstream",
+            "line": " src/forwarding-agent.js:197"
+        },
+        {
+            "message": "Missing item type\nNeed to do something better with this",
+            "line": " src/forwarding-agent.js:210"
+        },
+        {
+            "message": "Missing item type\npipe the request body upstream to the target server\nand also save the request body",
+            "line": " src/forwarding-agent.js:216"
+        },
+        {
+            "message": "Missing item type\nA backend server or slave is a normal https server that listens (is connected to via) a unix socket\nThe main proxy server directs traffic from CONNECT requests through an/the instance of\na backend server.\n\nTo serve as a backend for many servernames this server must use SNI callback to get the tls.secureContext\nfor any particular hostname/servername. The server makes use of the certstore class\nto manage (and if needed) create the required securecontext.\n\n\toptions (Object)\n\t\tcertStore \t\t: instance of CertStore\n\t\tlistSocketPath \t: fullpath to a unix socket on which this server will listen",
+            "line": " src/https-slave.js:8"
+        },
+        {
+            "message": "Missing item type\nCreates an object that reports a https tunnel",
+            "line": " src/mitm-report.js:5"
+        },
+        {
+            "message": "Missing item type\nCreates an object that reports a http or proxied https request/response cycle where the request\nand response have been captured (not tunneled)",
+            "line": " src/mitm-report.js:19"
+        },
+        {
+            "message": "Missing item type\nStrips out properties of interest from an IncomingMessage that re[resents a http(s) request",
+            "line": " src/mitm-report.js:38"
+        },
+        {
+            "message": "Missing item type\nStrips out properties of interest from an IncomingMessage that re[resents a http(s) response",
+            "line": " src/mitm-report.js:55"
+        },
+        {
+            "message": "Missing item type\nthese options control how the proxy handles CONNECT requests\nany CONNECT to one of the given https_ports is treated as a https proxy request\nif the hostname is NOT matched by on of the entries in the array of host regexs\nthen an anonymous tunnel to established\nIf a hostname IS matched then the traffic from the client is tunneled to the \nbackend https server and the request and response are captured \nA CONNECT to one of the http_ports is probably the start of a WS/WSS handshake\nDONT KNOW HOW TO HANDLE THAT AT THE MOMENT",
+            "line": " src/mitm-server.js:27"
+        },
+        {
+            "message": "Missing item type\nboth the req and resp are of type IncomingMessage which contains way too much\nirrelevant data, here we will strip them down to the essential",
+            "line": " src/mitm-server.js:112"
+        },
+        {
+            "message": "Missing item type\nIts a https connect request that we are going to MITM",
+            "line": " src/mitm-server.js:192"
+        },
+        {
+            "message": "Missing item type",
+            "line": " src/mitm-server.js:202"
+        },
+        {
+            "message": "Missing item type\nNeed to decide how to handle the CONNECT",
+            "line": " src/mitm-server.js:338"
+        },
+        {
+            "message": "Missing item type",
+            "line": " src/slave-master.js:64"
+        },
+        {
+            "message": "Missing item type\nForward the clients request upstream to the originally intended server",
+            "line": " src/slave-master.js:91"
+        },
+        {
+            "message": "Missing item type\nFactory",
+            "line": " src/slave-master.js:282"
+        }
+    ]
+}

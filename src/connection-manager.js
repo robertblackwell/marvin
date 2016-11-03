@@ -45,7 +45,9 @@ class ConnectionManagerV0{
 		cb(null, conn)
 	}
 }
-
+/**
+* Connection manage ris like a node agent
+*/
 class Connection{
 	
 	static estabish(protocol, host, port, cb){

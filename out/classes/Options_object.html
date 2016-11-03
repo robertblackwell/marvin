@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Options_object</title>
+    <link rel="stylesheet" href="http://yui.yahooapis.com/3.9.1/build/cssgrids/cssgrids-min.css">
+    <link rel="stylesheet" href="../assets/vendor/prettify/prettify-min.css">
+    <link rel="stylesheet" href="../assets/css/main.css" id="site_styles">
+    <link rel="icon" href="../assets/favicon.ico">
+    <script src="http://yui.yahooapis.com/combo?3.9.1/build/yui/yui-min.js"></script>
+</head>
+<body class="yui3-skin-sam">
+
+<div id="doc">
+    <div id="hd" class="yui3-g header">
+        <div class="yui3-u-3-4">
+                <h1><img src="../assets/css/logo.png" title="" width="117" height="52"></h1>
+        </div>
+        <div class="yui3-u-1-4 version">
+            <em>API Docs for: </em>
+        </div>
+    </div>
+    <div id="bd" class="yui3-g">
+
+        <div class="yui3-u-1-4">
+            <div id="docs-sidebar" class="sidebar apidocs">
+                <div id="api-list">
+                    <h2 class="off-left">APIs</h2>
+                    <div id="api-tabview" class="tabview">
+                        <ul class="tabs">
+                            <li><a href="#api-classes">Classes</a></li>
+                            <li><a href="#api-modules">Modules</a></li>
+                        </ul>
+                
+                        <div id="api-tabview-filter">
+                            <input type="search" id="api-filter" placeholder="Type to filter APIs">
+                        </div>
+                
+                        <div id="api-tabview-panel">
+                            <ul id="api-classes" class="apis classes">
+                                <li><a href="../classes/ForwardingAgent.html">ForwardingAgent</a></li>
+                                <li><a href="../classes/HttpsSlaveMaster.html">HttpsSlaveMaster</a></li>
+                                <li><a href="../classes/MitmServer.html">MitmServer</a></li>
+                                <li><a href="../classes/Options_object.html">Options_object</a></li>
+                                <li><a href="../classes/PerHostnameSlaveMaster.html">PerHostnameSlaveMaster</a></li>
+                                <li><a href="../classes/SniSlaveMaster.html">SniSlaveMaster</a></li>
+                            </ul>
+                
+                
+                            <ul id="api-modules" class="apis modules">
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="yui3-u-3-4">
+                <div id="api-options">
+                    Show:
+                    <label for="api-show-inherited">
+                        <input type="checkbox" id="api-show-inherited" checked>
+                        Inherited
+                    </label>
+            
+                    <label for="api-show-protected">
+                        <input type="checkbox" id="api-show-protected">
+                        Protected
+                    </label>
+            
+                    <label for="api-show-private">
+                        <input type="checkbox" id="api-show-private">
+                        Private
+                    </label>
+                    <label for="api-show-deprecated">
+                        <input type="checkbox" id="api-show-deprecated">
+                        Deprecated
+                    </label>
+            
+                </div>
+            
+            <div class="apidocs">
+                <div id="docs-main">
+                    <div class="content">
+<h1>Options_object Class</h1>
+<div class="box meta">
+
+
+        <div class="foundat">
+            Defined in: <a href="../files/src_config.js.html#l13"><code>src&#x2F;config.js:13</code></a>
+        </div>
+
+
+</div>
+
+
+<div class="box intro">
+    
+</div>
+
+
+<div id="classdocs" class="tabview">
+    <ul class="api-class-tabs">
+        <li class="api-class-tab index"><a href="#index">Index</a></li>
+
+            <li class="api-class-tab attrs"><a href="#attrs">Attributes</a></li>
+    </ul>
+
+    <div>
+        <div id="index" class="api-class-tabpanel index">
+            <h2 class="off-left">Item Index</h2>
+
+
+
+                <div class="index-section attrs">
+                    <h3>Attributes</h3>
+
+                    <ul class="index-list attrs">
+                            <li class="index-item attr">
+                                <a href="#attr_caCertPath">caCertPath</a>
+                            </li>
+                            <li class="index-item attr">
+                                <a href="#attr_caKeyPath">caKeyPath</a>
+                            </li>
+                            <li class="index-item attr">
+                                <a href="#attr_capture">capture</a>
+                            </li>
+                            <li class="index-item attr">
+                                <a href="#attr_certDir">certDir</a>
+                            </li>
+                            <li class="index-item attr">
+                                <a href="#attr_https_hosts Regex to match hostnames">https_hosts Regex to match hostnames</a>
+                            </li>
+                            <li class="index-item attr">
+                                <a href="#attr_https_ports - port numbers that will be treated as https ports">https_ports - port numbers that will be treated as https ports</a>
+                            </li>
+                            <li class="index-item attr">
+                                <a href="#attr_sni - if tre use SNI version of HttpsSlaveMaster">sni - if tre use SNI version of HttpsSlaveMaster</a>
+                            </li>
+                    </ul>
+                </div>
+
+        </div>
+
+
+
+            <div id="attrs" class="api-class-tabpanel">
+                <h2 class="off-left">Attributes</h2>
+
+                    <div id="attr_caCertPath" class="attr item">
+                        <a name="config_caCertPath"></a> 
+                        <h3 class="name"><code>caCertPath</code></h3>
+                        <span class="type"></span>
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                        <div class="meta">
+                                    <p>
+                                    Defined in
+                            <a href="../files/src_config.js.html#l41"><code>src&#x2F;config.js:41</code></a>
+                            </p>
+                    
+                    
+                        </div>
+                    
+                        <div class="description">
+                            <p>The path to the certificate for the Certificate Authority that will sign
+                    all the servername certificates. This is also manditory as no sensible default is possible</p>
+                    
+                        </div>
+                    
+                    
+                    
+                    </div>
+                    <div id="attr_caKeyPath" class="attr item">
+                        <a name="config_caKeyPath"></a> 
+                        <h3 class="name"><code>caKeyPath</code></h3>
+                        <span class="type"></span>
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                        <div class="meta">
+                                    <p>
+                                    Defined in
+                            <a href="../files/src_config.js.html#l47"><code>src&#x2F;config.js:47</code></a>
+                            </p>
+                    
+                    
+                        </div>
+                    
+                        <div class="description">
+                            <p>The path to the public key for the Certificate Authority that will sign
+                    all the servername certificates. This is also manditory as no sensible default is possible</p>
+                    
+                        </div>
+                    
+                    
+                    
+                    </div>
+                    <div id="attr_capture" class="attr item">
+                        <a name="config_capture"></a> 
+                        <h3 class="name"><code>capture</code></h3>
+                        <span class="type"></span>
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                        <div class="meta">
+                                    <p>
+                                    Defined in
+                            <a href="../files/src_config.js.html#l18"><code>src&#x2F;config.js:18</code></a>
+                            </p>
+                    
+                    
+                        </div>
+                    
+                        <div class="description">
+                            <p>These regex determine which requests and responses have their body content captured by the
+                    mitm. The purposes of these selectors is to ensure that we dont try to capture
+                    the body of large requests or responses entirely in a Buffer (the mitm forwarding
+                    process uses piping to avoid fully capturing a body, the body only needs to
+                    be captured for displaying/monitoring). For example images and videos
+                    are prime candidates. They often are large files and there is usually little
+                    interest in the content of the body of such requests or responses.</p>
+                    
+                        </div>
+                    
+                    
+                    
+                    </div>
+                    <div id="attr_certDir" class="attr item">
+                        <a name="config_certDir"></a> 
+                        <h3 class="name"><code>certDir</code></h3>
+                        <span class="type"></span>
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                        <div class="meta">
+                                    <p>
+                                    Defined in
+                            <a href="../files/src_config.js.html#l33"><code>src&#x2F;config.js:33</code></a>
+                            </p>
+                    
+                    
+                        </div>
+                    
+                        <div class="description">
+                            <p>settings for monitoring https traffic</p>
+                    <p>paths to a directory where x509 certificates and keys will be stored for
+                    each servername that Marvin intercepts. These are mandatory, Marvin cannot determine defaults for these</p>
+                    
+                        </div>
+                    
+                    
+                    
+                    </div>
+                    <div id="attr_https_hosts Regex to match hostnames" class="attr item">
+                        <a name="config_https_hosts Regex to match hostnames"></a> 
+                        <h3 class="name"><code>https_hosts Regex to match hostnames</code></h3>
+                        <span class="type"></span>
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                        <div class="meta">
+                                    <p>
+                                    Defined in
+                            <a href="../files/src_config.js.html#l54"><code>src&#x2F;config.js:54</code></a>
+                            </p>
+                    
+                    
+                        </div>
+                    
+                        <div class="description">
+                            <p>CONNECT requests for hostname on any of these ports will be treated as a
+                    https request. And if the servername matches one of the entries in {https_host}
+                    then the request will be monitored and the request/response pair
+                    provided. If the servername DOES NOT match one of {https_hosts}
+                    the reuqested will be tunneled anonamously</p>
+                    
+                        </div>
+                    
+                    
+                    
+                    </div>
+                    <div id="attr_https_ports - port numbers that will be treated as https ports" class="attr item">
+                        <a name="config_https_ports - port numbers that will be treated as https ports"></a> 
+                        <h3 class="name"><code>https_ports - port numbers that will be treated as https ports</code></h3>
+                        <span class="type"></span>
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                        <div class="meta">
+                                    <p>
+                                    Defined in
+                            <a href="../files/src_config.js.html#l63"><code>src&#x2F;config.js:63</code></a>
+                            </p>
+                    
+                    
+                        </div>
+                    
+                        <div class="description">
+                            
+                        </div>
+                    
+                    
+                    
+                    </div>
+                    <div id="attr_sni - if tre use SNI version of HttpsSlaveMaster" class="attr item">
+                        <a name="config_sni - if tre use SNI version of HttpsSlaveMaster"></a> 
+                        <h3 class="name"><code>sni - if tre use SNI version of HttpsSlaveMaster</code></h3>
+                        <span class="type">Bool</span>
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                        <div class="meta">
+                                    <p>
+                                    Defined in
+                            <a href="../files/src_config.js.html#l68"><code>src&#x2F;config.js:68</code></a>
+                            </p>
+                    
+                    
+                        </div>
+                    
+                        <div class="description">
+                            <p>Determines how https operates to monitor https traffic. If sni is present and sni === true
+                    a single https server backend handles all mitm monitoring for https traffic. That single server
+                    uses the SNIcallback property of https.Server to act on behalf of multiple servernames.</p>
+                    <p>If sni === undefined or sni === false. A new backend https.Server instance is created for
+                    each hostname. These are cached for reuse on subsequent requests to the same hostname</p>
+                    
+                        </div>
+                    
+                    
+                    
+                    </div>
+            </div>
+
+    </div>
+</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script src="../assets/vendor/prettify/prettify-min.js"></script>
+<script>prettyPrint();</script>
+<script src="../assets/js/yui-prettify.js"></script>
+<script src="../assets/../api.js"></script>
+<script src="../assets/js/api-filter.js"></script>
+<script src="../assets/js/api-list.js"></script>
+<script src="../assets/js/api-search.js"></script>
+<script src="../assets/js/apidocs.js"></script>
+</body>
+</html>

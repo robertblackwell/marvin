@@ -1,28 +1,35 @@
-var Mitm = require("./src/MitmServer")
+const {app, BrowserWindow} = require('electron');
+const {ipcMain} = require('electron')
+const Backend = require("./src/backend")
+const Options = require("./test/helpers/config")
+const TestServers  = require("./test/helpers/test-servers")
 
-var mitm = new Mitm()
-mitm.listen(4001, "127.0.0.1", ()=>{
-	mitm.on("tunnel", (obj)=>{
-		console.log("==============================================================================")
-		console.log("==============================================================================")
-		console.log("Tunnel status: " + obj.status + " port: " + obj.port + "  host : " + obj.host)
-		console.log("==============================================================================")
-		console.log("==============================================================================")
+let mainWindow;
+const 	serverPort = 9443
+const	serverHost = "localhost"
+const 	proxyPort = 4001
+const	proxyHost = "localhost"
+let remote;
+
+function send(channel, message){
+	mainWindow.webContents.send(channel, message)
+}
+
+app.on('ready', () => {
+	mainWindow = new BrowserWindow({
+		height: 600,
+		width: 800
+	});
+	mainWindow.loadURL('file://' + __dirname + '/index.html');
+	mainWindow.openDevTools();
+	Backend.start(Options, proxyHost, proxyPort, send, ()=>{
+		console.log("Proxy started")
+		// Since we are in test mode lets also start some https servers
+		remote = TestServers.createHttps()
+		remote.listen(serverPort, serverHost, function(){
+			console.log("test server started serverPort : %s serverHost : %s", serverPort, serverHost)
+			
+		})
 	})
-	mitm.on('finish', (req, resp)=>{
-		console.log("GOT AN EVENT FROM MITM", req.constructor.name, resp.constructor.name)
-		console.log("==============================================================================")
-		console.log("HTTP/"+req.httpVersion)
-		console.log(req.method)
-		console.log(req.url)
-		console.log(req.headers)
-		console.log(req.rawBody.toString())
-		console.log("-----------------------------------------------------------------------------")
-		console.log("HTTP/"+resp.httpVersion)
-		console.log(resp.statusCode)
-		console.log(resp.statusMessage)
-		console.log(resp.headers)
-		console.log(resp.rawBody.toString())
-		console.log("-----------------------------------------------------------------------------")		
-	})
-})
+
+  });
