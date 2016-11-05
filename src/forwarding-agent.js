@@ -34,6 +34,7 @@ module.exports = class ForwardingAgent{
 	*/
 	constructor(protocol, options){
 		this.protocol = protocol
+		this.defaultPort = {"https:":443, "http:":80}[protocol];
 		this.options = Object.assign(default_options, options)
 		this.acceptableContent = this.options.capture;
 		this.collectableContentType = ["text","application"]
@@ -75,8 +76,9 @@ module.exports = class ForwardingAgent{
 		* This stuff is still a problem 
 		*/
 		let pUrl = url.parse(req.url)
-		let hostname = pUrl.hostname
-		let port = pUrl.port
+		let hostname = (pUrl.hostname !== null) ? pUrl.hostname : req.headers['host']
+		let port = (pUrl.port !== null ) ? pUrl.port : this.defaultPort;
+		
 		let path = pUrl.path
 		let headerHostname = req.headers['host']
 		let headerPort = req.headers['port']
@@ -85,6 +87,8 @@ module.exports = class ForwardingAgent{
 			hostname = headerHostname = tmp[0]
 			port = headerPort = tmp[1]
 		}
+		logger.log("ForwardingAgent::forward req.url: ", req.url)
+		logger.log("ForwardingAgent::forward req.headers: ", req.headers)
 		logger.log("ForwardingAgent::forward protocol:[%s] hostname:[%s] port:[%d] ", this.protocol, hostname, port)
 		logger.debug("ForwardingAgent::forward::port: ", port)
 				
@@ -105,17 +109,12 @@ module.exports = class ForwardingAgent{
 		var newHeaders = {"mitm": "upstream-req"};
 	
 		_.each(reqHeaders, (value, key, list) =>{
-			// logger.info("key: " + key + "  value: " + value + " test : " + ({'host':true,'port':true}[key]))
 			if( {'host':true,'port':true}[key] !== true )
 				newHeaders[key] = value
 		})
 		
 		delete reqHeaders['host'];
 		delete reqHeaders['port'];
-		// logger.info(["after mod headers"])
-		// logger.info(reqHeaders)
-		// logger.info(newHeaders)
-		// process.exit()
 	 
 	/**
 	* This is a hack and needs to be fixed @FIX
@@ -132,17 +131,6 @@ module.exports = class ForwardingAgent{
 			options.rejectUnauthorized = false;
 			// options.ca = ca @TODO
 		}
-		// logger.info("ForwardingAgent::forward::request options", options)
-		// options = {
-		// 	protocol: "https:",
-		// 	hostname : "localhost",
-		// 	port: 9443,
-		// 	path : "/test",
-		// 	method : "GET",
-		// 	rejectUnauthorized: false,
-		// 	headers : reqHeaders
-		//
-		// }
 		logger.info("ForwardingAgent::forward::request options", options)
 	
 		/**
@@ -154,6 +142,8 @@ module.exports = class ForwardingAgent{
 		*	.then(notifyHttpTransactionFinished)
 		*/
 		const upstreamCallback = (targetServerResponse)=>{
+			logger.info("ForwardingAgent::upstreamCallback")
+
 			/**
 			* modify the reponse if necessary. At this time only add a mitm header to
 			* so the forwarding process can be detected
@@ -178,10 +168,7 @@ module.exports = class ForwardingAgent{
 				})
 			}else{
 				targetServerResponse.pipe(resp)
-				targetServerResponse.rawBody = new Buffer("")
-				// pipeAndCollectStreamContent(targetServerResponse, resp, (content)=>{
-				// 	targetServerResponse.rawBody = new Buffer("")
-				// })
+				targetServerResponse.rawBody = new Buffer("body is binary - not provided")
 			}
 			resp.on('finish', ()=>{
 				/**
@@ -197,14 +184,34 @@ module.exports = class ForwardingAgent{
 		/**
 		* get a connection and when we have it send the request upstream
 		*/
-		var conn = connectionManager.getConnectionForHostPort("http", pUrl.hostname, options.port, (err, conn)=>{
+		logger.info("ForwardingAgent::getConnectionForHostPort::", options.hostname, options.port)
+		let upStreamReq;
+		var conn = connectionManager.getConnectionForHostPort(this.protocol, options.hostname, options.port, (err, conn)=>{
+			logger.info("ForwardingAgent::getConnectionForHostPortCb", err, conn)
 			if( err ){
 				throw new Error("getConnectionForHostPort failed host :" + host + " port: " + port)
 			}
-			// var upStreamReq = conn.httpRequest( options, upstreamCallback )
-			var upStreamReq = (this.protocol === "https:") 
-				? https.request( options, upstreamCallback )
-				: http.request( options, upstreamCallback )
+
+			upStreamReq = conn.request(options, (resp)=>{
+				console.log("conn.request has returned a resp", resp.headers)
+				upstreamCallback(resp) 
+			})
+
+			// if( this.protocol === "https:"){
+			// 	logger.info("ForwardingAgent::https request")
+
+			// 	logger.info("ForwardingAgent::https request", options)
+
+			// 	upStreamReq = https.request( options, (resp)=>{
+			// 		logger.info("ForwardingAgent::https got a response", resp.headers)
+			// 		upstreamCallback(resp) 
+			// 	})
+			// }else if( this.protocol === "http:"){
+			// 	logger.info("ForwardingAgent::http request")
+			// 	upStreamReq = http.request( options, upstreamCallback )
+			// }
+
+			logger.info("ForwardingAgent::upstreamRequest", upStreamReq)
 			
 			upStreamReq.on('error', (e) => {
 				/**

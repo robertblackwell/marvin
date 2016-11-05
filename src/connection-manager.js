@@ -23,25 +23,43 @@
 * can be piped into the connection instance
 */
 const http = require('http')
+const https = require('https')
 const assert = require('assert')
 
 /**
 * The V0 versions of these two classes are a simple/dumb implementation
 */
-class ConnectionV0{
+class HttpConnectionV0{
 	constructor(protocol, host, port){
-		
+		this.protocol = protocol;
+		this.host = host;
+		this.port = port				
 	}
-	httpRequest(options, cb){
+	request(options, cb){
 		return http.request(options, cb)
+	}
+}
+class HttpsConnectionV0{
+	constructor(protocol, host, port){
+		this.protocol = protocol;
+		this.host = host;
+		this.port = port
+	}
+	request(options, cb){
+		return https.request(options, cb)
 	}
 }
 class ConnectionManagerV0{
 	constructor(options){
-		
 	}
 	getConnectionForHostPort(protocol, host, port, cb){
-		let conn = new ConnectionV0(protocol, host, port)
+		let conn;
+		if( protocol === "http:"){
+			conn = new HttpConnectionV0(protocol, host, port)
+
+		}else if( protocol === "https:"){
+			conn = new HttpsConnectionV0(protocol, host, port)
+		}
 		cb(null, conn)
 	}
 }

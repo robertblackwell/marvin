@@ -21,12 +21,12 @@ whiteacorn:
 	mocha proxy_whiteacorn.js
 
 http:
-	mocha http_direct
 	mocha http.js
 
 https:
 	node https-ex.js
 	mocha https.js
+	mocha https-ssltest.js
 	
 ca:
 	echo "make ca"

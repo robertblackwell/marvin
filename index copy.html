@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+<script type="text/javascript">
+document.addEventListener("DOMContentLoaded",()=>{
+	const util 		= require("util")
+	const _ 		= require("underscore")
+	window.$ = $ 	= require("jquery")
+	const {ipcRenderer} = require('electron')
+	const Channel	= require('./src/channels')
+	const Entities = require('html-entities').AllHtmlEntities
+
+	const MainController = require("./src/viwer/controllers/main-controller")
+
+	const mainController = new MainController()
+
+	let el = document.body
+	
+	ipcRenderer.on(Channel.HTTPS_TUNNEL,(ev, m)=>{
+		el.innerHTML = el.innerHTML + util.inspect(m)
+		console.log("el.scrollTop: "+ el.scrollTop, " el.scrollHeight: ", el.scrollHeight)
+		el.scrollTop = el.scrollHeight
+	})
+		
+	function displayBody(content_type, bodyString){
+		let bdy;
+		let entities = new Entities()
+		console.log("displayBody::content-type ", content_type, " bodyString: ", bodyString)
+		if( (typeof content_type == 'string')  && content_type.includes("application/json") ){
+			console.log("displayBody::application/json")
+			try{
+				bdy = JSON.parse(bodyString)
+			}catch(e){
+				bdy = bodyString
+			}
+		}else if( (typeof content_type == 'string') && 
+			(
+			 	content_type.includes("text/html") 
+			|| 	content_type.includes("application/xml") 
+			|| 	content_type.includes("application/xhtml+xml") 
+			||	content_type.includes("application/x-javascript")
+			||	content_type.includes("text/css")
+		){
+			bdy = entities.encode(bodyString)
+			console.log("displayBody::text/html", bdy)
+		}else if( (typeof content_type == 'string') && content_type.includes("application/x-javascript") ){
+			bdy = entities.encode(bodyString)
+		}else if( (typeof content_type == 'string') && content_type.includes("text/css") ){
+			bdy = entities(bodyString)
+		}else{
+
+		}
+		return bdy
+	}	
+	ipcRenderer.on(Channel.HTTP_TX,(ev, m)=>{
+		mainController.receiveReportIpc(m)
+		return;
+		let req = m.request;
+		let resp = m.response;
+		console.log("request.headers", req.headers, req.headers['content-type'])
+		console.log("response.headers", resp.headers, resp.headers['content-type'])
+		let reqBdy = displayBody(req.headers["content-type"], req.rawBody.toString())
+		let respBdy = displayBody(resp.headers["content-type"], resp.rawBody.toString())
+		let method = req.method;
+		let host = req.headers.host;
+		let path = req.url;
+		let httpVersion = req.httpVersion;
+	
+		let h = "<h2>"+host+"</h2>";
+		h += "<p>HTTP/"+httpVersion + " " + method + " " + path + "</p>"
+		h += "<pre>"+ JSON.stringify(req.headers) + "</pre>"
+	
+		h += "<hr>";
+		h += "<h3>Body</h3>";
+		h += "<span><pre><code>" + req.rawBody.toString() + "</code></pre></span>"
+		h += "<hr>";
+		h += "<p>" + resp.statusCode + " " + resp.statusMessage + "</p>"
+		h += "<pre>"+ JSON.stringify(resp.headers) + "</pre>"
+
+		h += "<hr>";
+		h += "<h3>Body</h3>";
+		h += "<pre><code>" + respBdy + "</code></pre>"
+		h += "<hr>";
+	 
+	
+		let txt = "<p>"+util.inspect(m)+"</p>"
+		el.innerHTML = el.innerHTML + h
+		console.log("el.scrollTop: "+ el.scrollTop, " el.scrollHeight: ", el.scrollHeight)
+		el.scrollTop = el.scrollHeight
+		console.log("el.scrollTop: "+ el.scrollTop, " el.scrollHeight: ", el.scrollHeight)
+		console.log("renderer got message", m )
+	})
+})
+</script>
+</head>
+<body id="body">
+<!-- <div id="view" style="height:400px; width:600px;overflow-y:hidden;"></div> -->
+</body>
+</html>

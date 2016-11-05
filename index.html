@@ -1,52 +1,57 @@
 <!DOCTYPE html>
 <html>
 <head>
+<link rel="stylesheet" href="./css/master.css">
+
+<style>
+	.report{
+		border: 1px solid #888888; 
+		background-color:#CCCCCC;
+
+		cursor:pointer;
+		padding : 0px;
+		margin: 10px;
+	}
+	.report-header{
+		padding : 5px 10px 5px 10px;
+
+	}
+	.report-request {
+		background-color:#FFFFCC; 
+		border-top: 1px solid black;
+		padding : 5px 10px 5px 10px;
+	}
+	.report-request  h4, .report-response h4{
+		margin: 5px;
+	}
+	.report-response {
+		background-color:#FFCCCC; 
+		border-top: 1px solid black;
+		padding : 5px 10px 5px 10px;
+	}
+</style>
 <script type="text/javascript">
+
 document.addEventListener("DOMContentLoaded",()=>{
-	const util 		= require("util")
-	const _ 		= require("underscore")
-	window.$ = $ 	= require("jquery")
 	const {ipcRenderer} = require('electron')
+	const {remote} = require('electron')
+	const {Menu, MenuItem} = remote
+
 	const Channel	= require('./src/channels')
+
+
+	const MainController = require("./src/viewer/controllers/main-controller")
+
+	const mainController = new MainController()
+
 	let el = document.body
 	
 	ipcRenderer.on(Channel.HTTPS_TUNNEL,(ev, m)=>{
-		el.innerHTML = el.innerHTML + util.inspect(m)
-		console.log("el.scrollTop: "+ el.scrollTop, " el.scrollHeight: ", el.scrollHeight)
-		el.scrollTop = el.scrollHeight
+		mainController.receiveTunnelReportIpc(m)
 	})
 		
 	ipcRenderer.on(Channel.HTTP_TX,(ev, m)=>{
-		let req = m.request;
-		let resp = m.response;
-		let method = req.method;
-		let host = req.headers.host;
-		let path = req.url;
-		let httpVersion = req.httpVersion;
-	
-		let h = "<h2>"+host+"</h2>";
-		h += "<p>HTTP/"+httpVersion + " " + method + " " + path + "</p>"
-		h += "<pre>"+ JSON.stringify(req.headers) + "</pre>"
-	
-		h += "<hr>";
-		h += "<h3>Body</h3>";
-		h += "<span>" + req.rawBody.toString() + "</span>"
-		h += "<hr>";
-		h += "<p>" + resp.statusCode + " " + resp.statusMessage + "</p>"
-		h += "<pre>"+ JSON.stringify(resp.headers) + "</pre>"
-
-		h += "<hr>";
-		h += "<h3>Body</h3>";
-		h += "<pre>" + util.inspect(JSON.parse(resp.rawBody.toString())) + "</pre>"
-		h += "<hr>";
-	 
-	
-		let txt = "<p>"+util.inspect(m)+"</p>"
-		el.innerHTML = el.innerHTML + h
-		console.log("el.scrollTop: "+ el.scrollTop, " el.scrollHeight: ", el.scrollHeight)
-		el.scrollTop = el.scrollHeight
-		console.log("el.scrollTop: "+ el.scrollTop, " el.scrollHeight: ", el.scrollHeight)
-		console.log("renderer got message", m )
+		mainController.receiveTXReportIpc(m)
 	})
 })
 </script>

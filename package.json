@@ -3,7 +3,10 @@
   "version": "0.3.1",
   "dependencies": {
     "async": "*",
+    "backbone": "^1.3.3",
     "electron": "^1.4.5",
+    "electron-menus": "^0.1.0",
+    "html-entities": "^1.2.0",
     "jquery": "^3.1.1",
     "regex": "^0.1.1",
     "request": ">=2.51.0",
@@ -20,7 +23,7 @@
   },
   "scripts": {
     "test": "mocha -R spec --recursive",
-	"start": "./node_modules/.bin/electron main.js"
+    "start": "./node_modules/.bin/electron main.js"
   },
   "repository": {
     "type": "git",

@@ -27,7 +27,7 @@ var flatOptions = {
 	*/
 	capture: [
 		RegExp(/^text\/.*$/), 
-		RegExp(/^application\/.*$/)				
+		RegExp(/^application\/(?!octet|octet-stream)(.*)$/)				
 	],
 
 	/**
@@ -80,39 +80,4 @@ var flatOptions = {
 	log 		: function noLog(){}	
 }
 
-// var opt = {
-// 	slaveMaster : {
-// 		sni: true,
-// 		certStore : {
-// 	 		certDir 	: cdir,
-// 	 		caCertPath  : caCert,
-// 	 		caKeyPath   : caKey,
-// 			log : function noLog(){}
-// 		},
-// 		log : function noLog(){}
-// 	},
-// 	response_content_to_capture :[
-// 		RegExp(/^text\/.*$/),
-// 		RegExp(/^application\/.*$/)
-// 	],
-// 	htts:{
-// 		ports: [443,9443], 	//ports that will trigger an https proxy
-// 		hosts: [/^.*$/],		// regex to identify hosts that should invoke https mitm
-// 	},
-// 	log : function noLog(){}
-//
-// }
-//
-// var certStoreOptions = opt.slaveMaster.certStore
-// var slaveMasterOptions = opt.slaveMaster
-// var mitmOptions = opt;
-
 module.exports = flatOptions;
-//
-// module.exports = {
-// 	options		: flatOptions,
-// 	mitm 		: mitmOptions,
-// 	slaveMaster	: slaveMasterOptions,
-// 	certStore	: certStoreOptions,
-// 	ca : ca
-// }
