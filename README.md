@@ -13,7 +13,7 @@ To build it and use it
 	-	Test it with Firefox where you can set webproxy to localhost:4001 for both http and https without changing the system proxy.
 
 	-	Since it will proxy https traffic as it stands you will also have to import into Firefox's root certificate store the certificate located at
-`marvin/test/certificate-store/ca-cert.pem` and make it trusted.
+`marvin/test/certificate-store/ca-cert.pem` and make it trusted. If you dont do this Firefox will ask you to accept a security risk when you try to access a https site. I have tested https with bankofamerica and wellsfargo which are quite complicated sites. 
 
 -	Once this is done you should be ready to rock and roll.
 -	Marvin displays each http(s) exchange as a single item in a list, click that item and you will see details of the request and response.
