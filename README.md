@@ -18,3 +18,4 @@ To build it and use it
 -	Once this is done you should be ready to rock and roll.
 -	Marvin displays each http(s) exchange as a single item in a list, click that item and you will see details of the request and response.
 -	Currently the display of request/response body data is limited.
+-	On the main menu the only option that works is __Record__ --> __Clear__, it empties the currently captured data.
