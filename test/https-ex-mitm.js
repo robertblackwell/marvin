@@ -45,7 +45,6 @@ const assert		= require("assert")
 const async 		= require('async')
 const url 			= require('url')
 const request 		= require('request')
-const Mitm 			= require("../src/mitm-server")
 const util			= require("util")
 const fs 			= require('fs')
 const inspect 		= require("util").inspect
@@ -53,13 +52,16 @@ const http 			= require("http")
 const https 		= require("https")
 const process		= require('process')
 const _ 			= require("underscore")
-const TestServers 	= require("./helpers/test-servers")
-const Helpers 		= require("./helpers/functions")
-const Options		= require("./helpers/config")
-const CertStore 	= require("../src/cert-store")
+
+const Mitm 			= require("mitm-server")
+const TestServers 	= require("test/helpers/test-servers")
+const Helpers 		= require("test/helpers/functions")
+const Options		= require("test/helpers/config")
+const CertStore 	= require("cert-store")
+const Logger 		= require("logger")
+
 let verbose = true
 const tlog = Helpers.testLogger(verbose).log
-const Logger = require("../src/logger")
 if(!verbose){Logger.enable()}else{Logger.disable()}
 
 let serverPort = 9991

@@ -8,13 +8,14 @@
     "electron-menus": "^0.1.0",
     "html-entities": "^1.2.0",
     "jquery": "^3.1.1",
+    "mkdirp": "^0.5.1",
     "regex": "^0.1.1",
-    "request": ">=2.51.0",
     "underscore": "^1.8.3"
   },
   "description": "HTTP/HTTPS debugging proxy",
   "main": "index.js",
   "devDependencies": {
+    "electron-packager": "^8.2.0",
     "gulp": "^3.9.1",
     "gulp-jsdoc3": "^1.0.0",
     "httpdispatcher": "*",
@@ -23,7 +24,8 @@
   },
   "scripts": {
     "test": "mocha -R spec --recursive",
-    "start": "./node_modules/.bin/electron main.js"
+    "start": "./node_modules/.bin/electron .",
+    "build": "./node_modules/.bin/electron-packager --platform=darwin --arch=x64 --version=1.4.5 --overwrite . Marvin --ignore=node_modules/electron-*"
   },
   "repository": {
     "type": "git",

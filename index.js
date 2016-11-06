@@ -1,12 +1,14 @@
-const electron = require('electron')
-const {ipCMain, app, BrowserWindow, ipcMain, Menu, systemPreferences} = electron;
+require('module').globalPaths.push(__dirname+"/src")
+
+const electron = require('electron');
+const {ipCMain, app, BrowserWindow, ipcMain, Menu, systemPreferences} = require('electron');
 
 // const Menu = require('electron').Menu
 
 const mainMenu 		= require("./menus/main-menu") 
 const Backend 		= require("./src/backend")
 const Options 		= require("./test/helpers/config")
-const TestServers  	= require("./test/helpers/test-servers")
+// const TestServers  	= require("./test/helpers/test-servers")
 let logger 			= { log : console.log }
 
 
@@ -20,6 +22,7 @@ let remote;
 function send(channel, message){
 	mainWindow.webContents.send(channel, message)
 }
+
 const argv = process.argv
 logger.log(argv)
 if( argv.length >= 3)
@@ -42,6 +45,11 @@ app.on('ready', () => {
 
 	mainWindow.loadURL('file://' + __dirname + '/index.html');
 	mainWindow.openDevTools();
+
+	/**
+	* Setup the main menu. Note main menu events and all sent to the mainWindow
+	* where they invoke a method on the mainController
+	*/
     let template = mainMenu(app, mainWindow)
 	Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 
@@ -54,11 +62,11 @@ app.on('ready', () => {
 	Backend.start(Options, proxyHost, proxyPort, send, ()=>{
 		logger.log("Proxy started")
 		// Since we are in test mode lets also start some https servers
-		remote = TestServers.createHttps()
-		remote.listen(serverPort, serverHost, function(){
-			logger.log("test server started serverPort : %s serverHost : %s", serverPort, serverHost)
+		// remote = TestServers.createHttps()
+		// remote.listen(serverPort, serverHost, function(){
+		// 	logger.log("test server started serverPort : %s serverHost : %s", serverPort, serverHost)
 			
-		})
+		// })
 	})
 
 });

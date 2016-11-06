@@ -16,6 +16,7 @@ function hostCert(options, hostname){
 	var certFn = options.certDir+"/"+hostname+"-cert.pem";
 	return certFn;
 }
+const markHeaders = false;
 
 /**
 * 	This class controls the creation and access to slave https servers.
@@ -99,11 +100,14 @@ class HttpsSlaveMaster { //base class
 		logger.info("HttpsSlave forwarding request headers:",  req.headers)
 		
 		const fa = new ForwardingAgent("https:", this.options)
-		req.headers['slave'] = this.whoAmI
+		
+		if( markHeaders )
+			req.headers['slave'] = this.whoAmI
+	
 		fa.forward(req, resp, (protocol, tReq, tResp)=>{
 			logger.info("HttpsSlave forward callback")
-			tReq.headers['slave'] = this.whoAmI
-			tResp.headers['slave'] = this.whoAmI
+			// tReq.headers['slave'] = this.whoAmI
+			// tResp.headers['slave'] = this.whoAmI
 			this.completionCb(protocol, tReq, tResp)
 			logger.info("HttpsSlave forward callback - return")
 		})

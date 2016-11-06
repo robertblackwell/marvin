@@ -2,6 +2,8 @@
 .DS_Store
 
 node_modules/
+Marvin-darwin*/
+test/certificate-store/
 # Xcode
 build/
 *.pbxuser

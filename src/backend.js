@@ -1,10 +1,10 @@
-const Mitm 	= require("./mitm-server")
-const TestServers = require("../test/helpers/test-servers")
-const Logger = require("./logger")
+const Mitm 				= require("./mitm-server")
+const Logger 			= require("./logger")
+const MitmReportType 	= require("./mitm-report-type")
+const MitmReport 		= require("./mitm-report")
+const Channel			= require('./channels')
+
 Logger.enable()
-const MitmReportType = require("./mitm-report-type")
-const MitmReport = require("./mitm-report")
-const Channel	= require('./channels')
 
 let mitm;
 

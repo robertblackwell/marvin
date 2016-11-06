@@ -1,6 +1,6 @@
-const ReportCollection = require("../models/report-collection")
-const MainView = require("../views/main-view")
-const ReportModel = require("../models/report-model")
+const ReportCollection 	= require("../models/report-collection")
+const MainView 			= require("../views/main-view")
+const ReportModel 		= require("../models/report-model")
 
 module.exports = class MainController{
 	constructor(){
@@ -9,6 +9,9 @@ module.exports = class MainController{
 	}
 	addReport(report){
 		this.reportCollection.push(report)
+	}
+	clearReports(){
+		this.reportCollection.clear()
 	}
 	receiveTXReportIpc(rawReport){
 		console.log("MainController::receiveTXReportIpc", rawReport);

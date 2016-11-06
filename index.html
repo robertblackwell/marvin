@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+<title>MarvinTitle</title>
 <link rel="stylesheet" href="./css/master.css">
 
 <style>
@@ -17,7 +18,7 @@
 
 	}
 	.report-request {
-		background-color:#FFFFCC; 
+		background-color:#FFFFEE; 
 		border-top: 1px solid black;
 		padding : 5px 10px 5px 10px;
 	}
@@ -25,7 +26,7 @@
 		margin: 5px;
 	}
 	.report-response {
-		background-color:#FFCCCC; 
+		background-color:#EEFFEE; 
 		border-top: 1px solid black;
 		padding : 5px 10px 5px 10px;
 	}
@@ -33,19 +34,24 @@
 <script type="text/javascript">
 
 document.addEventListener("DOMContentLoaded",()=>{
-	const {ipcRenderer} = require('electron')
-	const {remote} = require('electron')
-	const {Menu, MenuItem} = remote
-
-	const Channel	= require('./src/channels')
-
-
-	const MainController = require("./src/viewer/controllers/main-controller")
-
+	const {ipcRenderer} 	= require('electron')
+	const Channel			= require('./src/channels')
+	const MainController 	= require("./src/viewer/controllers/main-controller")
+	
 	const mainController = new MainController()
 
-	let el = document.body
-	
+	/**
+	* Send main menu events to the renderer process for the mainWindow -- the main menu
+	* only operates on the main window and only via calls to mainController methods
+	*/
+	ipcRenderer.on("menu-record-clear",()=>{
+		console.log("mainWindow receiving clear")
+		mainController.clearReports()
+	})
+
+	/**
+	* receive traffic reports from the backend proxy, which runs in the main process
+	*/
 	ipcRenderer.on(Channel.HTTPS_TUNNEL,(ev, m)=>{
 		mainController.receiveTunnelReportIpc(m)
 	})
@@ -57,6 +63,6 @@ document.addEventListener("DOMContentLoaded",()=>{
 </script>
 </head>
 <body id="body">
-<!-- <div id="view" style="height:400px; width:600px;overflow-y:hidden;"></div> -->
+
 </body>
 </html>

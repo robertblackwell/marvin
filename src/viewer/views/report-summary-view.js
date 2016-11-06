@@ -6,7 +6,7 @@ const tmpl = `
 	<div class="report">
 		<div class='report-header'>
 			<!--h3><%= protocol %>://<%= hostname %> : <%= port %></h3-->
-			<span><%= url %></span>
+			<span style='white-space:pre-wrap;word-wrap:break-word'><%= url %></span>
 		</div>
 		<div class='report-request'>
 			<!--h3>Request</h3-->
@@ -36,12 +36,16 @@ module.exports = class ReportSummaryView{
 		this.$el = $(el)
 	}
 	render(){
+		let url = this.model.request.url
+		if( this.model.protocol === "https:" ){
+			url = this.model.protocol+"://"+this.model.hostname + ":" + this.model.port + this.model.request.url
+		}
 
 		let html = tempFun({
 			protocol : this.model.protocol,
 			hostname : this.model.hostname,
 			port : this.model.port,
-			url : this.model.request.url,
+			url : url,
 		})
 		let newEl = $(html)
 		this.$myEl = newEl
@@ -70,7 +74,7 @@ module.exports = class ReportSummaryView{
 
 function renderRequest(req, $el){
 
-	let reqLineTmpl = "<span> HTTP/<%= vers %> <%= method %> <%= url %> </span>"
+	let reqLineTmpl = "<span style='white-space:pre-wrap;word-wrap:break-word'> HTTP/<%= vers %> <%= method %> <%= url %> </span>"
 	let lf = _.template(reqLineTmpl)
 
 	let fObj = {vers : req.httpVersion, method : req.method, url : req.url}
@@ -91,7 +95,7 @@ function renderResponse(resp, $el){
 			</div>
 		</div>
 	`
-	let firstLineTempl = "<span> <%= statusCode %> <%= statusMessage %> HTTP/<%= vers %></span>"
+	let firstLineTempl = "<span  style='white-space:pre-wrap;word-wrap:break-word'> <%= statusCode %> <%= statusMessage %> HTTP/<%= vers %></span>"
 	let lf = _.template(firstLineTempl)
 
 	let fObj = {vers : resp.httpVersion, statusCode : resp.statusCode, statusMessage : resp.statusMessage}
@@ -100,6 +104,9 @@ function renderResponse(resp, $el){
 	$myel.append(flhtml)
 	$myel.append(renderHeaders(resp.headers))
 	$myel.append(renderBody(resp.rawBody))
+	console.log("ReportSummaryView::renderResponse::rawBody::", typeof resp.rawBody, 
+		resp.headers['content-encoding'],
+		resp.rawBody.toString())
 	return $myel
 }
 
@@ -120,7 +127,7 @@ function renderHeaders(headers){
 		let label = h;
 		let value = headers[h]
 		let obj = {label: h, value : value}
-		let tmpl = `<span><%= label %> : <%= value %></span><br> `
+		let tmpl = `<span  style='white-space:pre-wrap;word-wrap:break-word'><%= label %> : <%= value %></span><br> `
 		let tf = _.template(tmpl)
 		let $newEl = $(tf(obj))
 		$myel.append($newEl)

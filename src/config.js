@@ -27,7 +27,7 @@ var flatOptions = {
 	*/
 	capture: [
 		RegExp(/^text\/.*$/), 
-		RegExp(/^application\/(?!octet|octet-stream)(.*)$/)				
+		RegExp(/^application\/(?!octet|octet-stream|ocsp)(.*)$/)				
 	],
 
 	/**

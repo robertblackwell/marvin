@@ -4,6 +4,7 @@ CERTDIR=$(PWD)/testdata
 CAKEYPAIR=$(CERTDIR)/ca.key
 CAKEY=$(CERTDIR)/cakey.pem
 CACERT=$(CERTDIR)/cacert.pem
+NODEPATH=NODE_PATH=../:../src
 
 dump:
 	@echo $(PWD)
@@ -15,18 +16,20 @@ dump:
 all: cert whiteacorn http https
 
 cert:
-	mocha cert.js
+	$(NODEPATH) mocha cert.js
 
 whiteacorn:
-	mocha proxy_whiteacorn.js
+	$(NODEPATH) mocha proxy_whiteacorn.js
 
 http:
-	mocha http.js
+	$(NODEPATH) mocha http.js
 
 https:
-	node https-ex.js
-	mocha https.js
-	mocha https-ssltest.js
+	$(NODEPATH) node https-ex.js
+	$(NODEPATH) mocha https.js
+	$(NODEPATH) mocha https-ssltest.js
+	$(NODEPATH) node https-ex-mitm.js
+
 	
 ca:
 	echo "make ca"

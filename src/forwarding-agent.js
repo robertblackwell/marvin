@@ -4,15 +4,14 @@ const https = require("https")
 const _ = require("underscore")
 const connectionManager = require("./connection-manager")
 const LogLevels = require("./logger").LogLevels
-const logger = require("./logger").createLogger(LogLevels.DEBUG)
+const logger = require("./logger").createLogger(LogLevels.INFO)
 
-
+const markHeaders = false;
 const default_options = {
 	capture :[	
 		RegExp(/^text\/.*$/), 
 		RegExp(/^application\/.*$/)
-	],
-	
+	],	
 }
 
 /**
@@ -54,9 +53,6 @@ module.exports = class ForwardingAgent{
 	*
 	*	-	once the response to the initial client signals "finish" - meaning all responsibility for this response 
 	*		has passed to the OS signal the outside world by triggering a "finish" event on the 
-	*		
-	*		Mitm object - @TODO - this is not the correct object now
-	*
 	*		so watches can log the transaction. The event name "finish" is probably a bit unfortunate
 	*
 	*	-	the finish event handler has signature function(req, res) where
@@ -64,6 +60,15 @@ module.exports = class ForwardingAgent{
 	*			of type Buffer
 	*		-	res is the response from the target server of type IncomingMessage to which (in selected cases) has
 	*			been added a property rawBody. The rawBody is only added if this.shouldCollectResponseBody() returns true
+	*
+	* How should this method handle errors ?? 
+	* 	regardless of what error is encoutered during the forwarding process, the following things MUST happen.
+	*	-	some form of http(s) response must be sent to the client to complete the transaction
+	*	-	the cb must be called so that the app does not hang. cb must be passed some form of tResp to
+	*		explain the error
+	*	So for any error while forwarding upstream we report a 503 and set the body of the response
+	*	to the json text of the error object that was generated
+	*
 	* @method forward
 	* @param 	{Node::IncomeingMessage} req  	- 	the request message from the original client
 	* @param 	{Node::ServerResponse}  resp	- 	the response to be sent to the initial client
@@ -71,9 +76,31 @@ module.exports = class ForwardingAgent{
 	*/
 	forward(req, resp, cb)
 	{
+		let errorHandler = function(err){
+			//
+			// Why do this ? - because we do not have an IncomingMessage from the upstream server
+			// so we fake it because the callback chaiin expectes it
+			//
+			let fakeUpstreamResponse = {}
+			fakeUpstreamResponse.statusCode = 504
+			fakeUpstreamResponse.statusMessage = "failed trying to reach upstream server"
+			fakeUpstreamResponse.httpVersion = "1.1"
+			fakeUpstreamResponse.headers = {}
+			let cr = resp;
+			let body = JSON.stringify(err)
+			fakeUpstreamResponse.rawBody = body
+			cr.writeHead(503, "Failed attempting to reach upstream server");
+			cr.rawBody = body;
+			cr.end(body,()=>{
+				cb(this.protocol, req, fakeUpstreamResponse)
+			})
+
+		}.bind(this)
+
 		/**
 		* Parse the url in prep for forwarding the request upstream
-		* This stuff is still a problem 
+		* This stuff is still a problem and is tricky because http and https
+		* proxying handles the url differently 
 		*/
 		let pUrl = url.parse(req.url)
 		let hostname = (pUrl.hostname !== null) ? pUrl.hostname : req.headers['host']
@@ -104,15 +131,18 @@ module.exports = class ForwardingAgent{
 		* that should be added. 
 		* @TODO - research what else I have to do
 		*/
-		var reqHeaders = {"mitm": "upstream-req"}; 
+		var reqHeaders = {}
+		if( markHeaders )
+			reqHeaders = {"mitm": "upstream-req"}; 
 		Object.assign(reqHeaders, req.headers);
-		var newHeaders = {"mitm": "upstream-req"};
+
+		var newHeaders = {};//{"mitm": "upstream-req"};
 	
 		_.each(reqHeaders, (value, key, list) =>{
 			if( {'host':true,'port':true}[key] !== true )
 				newHeaders[key] = value
 		})
-		
+		reqHeaders['accept-encoding'] = "identity";
 		delete reqHeaders['host'];
 		delete reqHeaders['port'];
 	 
@@ -148,8 +178,8 @@ module.exports = class ForwardingAgent{
 			* modify the reponse if necessary. At this time only add a mitm header to
 			* so the forwarding process can be detected
 			*/
-			targetServerResponse.headers['mitm'] = "upstream-resp"
-		
+			if( markHeaders ) targetServerResponse.headers['mitm'] = "upstream-resp"
+
 			/**
 			* now send the response downstream to the original client
 			*/
@@ -189,64 +219,29 @@ module.exports = class ForwardingAgent{
 		var conn = connectionManager.getConnectionForHostPort(this.protocol, options.hostname, options.port, (err, conn)=>{
 			logger.info("ForwardingAgent::getConnectionForHostPortCb", err, conn)
 			if( err ){
-				throw new Error("getConnectionForHostPort failed host :" + host + " port: " + port)
-			}
-
-			upStreamReq = conn.request(options, (resp)=>{
-				console.log("conn.request has returned a resp", resp.headers)
-				upstreamCallback(resp) 
-			})
-
-			// if( this.protocol === "https:"){
-			// 	logger.info("ForwardingAgent::https request")
-
-			// 	logger.info("ForwardingAgent::https request", options)
-
-			// 	upStreamReq = https.request( options, (resp)=>{
-			// 		logger.info("ForwardingAgent::https got a response", resp.headers)
-			// 		upstreamCallback(resp) 
-			// 	})
-			// }else if( this.protocol === "http:"){
-			// 	logger.info("ForwardingAgent::http request")
-			// 	upStreamReq = http.request( options, upstreamCallback )
-			// }
-
-			logger.info("ForwardingAgent::upstreamRequest", upStreamReq)
-			
-			upStreamReq.on('error', (e) => {
-				/**
-				* Need to do something better with this
-				*/
-			  logger.error(`problem with request: ${e.message}`);
-			});
+				log.error("getConnectionForHostPort failed host :" + host + " port: " + port)
+				errorHandler(err);
+			} else {
+				upStreamReq = conn.request(options, (resp)=>{
+					console.log("conn.request has returned a resp", resp.headers)
+					upstreamCallback(resp) 
+				})
 	
-			/**
-			* pipe the request body upstream to the target server
-			* and also save the request body
-			*/
-			pipeAndCollectStreamContent(req, upStreamReq, (content)=>{
-				req.rawBody = content; // also a the same hack - add the raw body dynamically to the request 
-				upStreamReq.end(); // not sure about this -- maybe the pipe does this for me
-			})
+				upStreamReq.on('error', (e) => {
+				  logger.error(`problem with request did not complete: ${e.message}`);
+				  errorHandler(e)
+				});
 		
+				/**
+				* pipe the request body upstream to the target server
+				* and also save the request body
+				*/
+				pipeAndCollectStreamContent(req, upStreamReq, (content)=>{
+					req.rawBody = content; // also a the same hack - add the raw body dynamically to the request 
+					upStreamReq.end(); // not sure about this -- maybe the pipe does this for me
+				})
+			}
 		})
-		// var upStreamReq = conn.sendHttpRequest( options, upstreamCallback )
-		//
-		// upStreamReq.on('error', (e) => {
-		// 	/**
-		// 	* Need to do something better with this
-		// 	*/
-		//   logger.info(`problem with request: ${e.message}`);
-		// });
-		//
-		// /**
-		// * pipe the request body upstream to the target server
-		// * and also save the request body
-		// */
-		// pipeAndCollectStreamContent(req, upStreamReq, (content)=>{
-		// 	req.rawBody = content; // also a the same hack - add the raw body dynamically to the request
-		// 	upStreamReq.end(); // not sure about this -- maybe the pipe does this for me
-		// })
 	}
 	/**
 	* Determine what types of response content we want to collect and signal
@@ -267,7 +262,6 @@ module.exports = class ForwardingAgent{
 			var c_type = res.headers['content-type']
 			logger.debug("ForwardingAgent::shouldCollectResponseBody content type is ", res.headers['content-type'])
 			this.acceptableContent.forEach((re)=>{
-				// var re = new Regex(reStr)
 				logger.debug("ForwardingAgent::shouldCollectResponseBody::matching loop", c_type, (c_type.match(re)!== null) )
 				if( c_type.match(re) !== null ){
 					result = true;

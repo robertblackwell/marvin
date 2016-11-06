@@ -1,10 +1,10 @@
 const assert = require('assert');
 
-const CertStore = require('../src/cert-store')
-const Logger = require('../src/logger')
+const CertStore = require('cert-store')
+const Logger = require('logger')
 const LogLevels = Logger.LogLevels
 Logger.disable()
-const logger = require("../src/logger").createLogger(LogLevels.DEBUG)
+const logger = require("logger").createLogger(LogLevels.DEBUG)
 
 describe('getCert', function() {
 

@@ -1,38 +1,43 @@
 const ReportSummaryView = require("./report-summary-view")
 const $ = require('jquery')
 
-// let MainView = Backbone.View.extend({
-// 	tagName : "div",
-// 	subViews : [],
-
-// 	initialize : function(){
-// 		this.listenTo(this.model, 'add', this.addOne)
-// 		this.listenTo(this.model, 'change', ()=>{})
-// 	},
-// 	addOne:(m)=>{
-// 		let sView = new ReportSummaryView(m, this.el)
-// 		subViews.push(sView)
-// 		sView.render()
-// 	},
-// 	render: ()=>{
-
-// 	}
-
-// })
+const buttonTmpl = `
+	<div class="button-bar">
+		<button type="button"> Clear </button>
+	</div>
+`
 
 class MainView{
 	constructor(collection){
 		this.collection = collection;
-		this.$el = $('body');
-		this.el = this.$el[0];
+		let $buttons = $("");//$(buttonTmpl)
+		this.$el = $('body')
+
+		$('body').append($buttons);
+		$('body').append("<div id='log-area' class='log-area'></div>")
+		this._$el = $("body").find("#log-area")
+		this._el = this._$el[0];
 		this.subViews = [];
 		this.collection.on('add', (report)=>{
-			let sv = new ReportSummaryView(report, this.el)
+			let sv = new ReportSummaryView(report, this._el)
 			sv.render()
 		})
+		this.collection.on('empty', this.empty.bind(this))
+		$buttons.click(()=>{
+			console.log("button click - empty display")
+			this.collection.clear()
+		})
+	}
+	empty(){
+		this._$el.empty()		
 	}
 	render(){
-
+		this._$el.empty()
+		return;
+		$('body').empty()
+		$('body').append($buttons);
+		$('body').append("<div id='log-area' class='log-area'></div>")
+		this.$el = $("body").find("#log-area")
 	}
 }
 module.exports = MainView

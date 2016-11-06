@@ -8,7 +8,7 @@ const _ = require('underscore')
 
 const Logger = require("./logger")
 const LogLevels = require("./logger").LogLevels
-const logger = require("./logger").createLogger(LogLevels.DEBUG)
+const logger = require("./logger").createLogger(LogLevels.LOG)
 const SlaveMaster = require("./slave-master")
 const ForwardingAgent = require("./forwarding-agent")
 const MitmReportType = require("./mitm-report-type")
