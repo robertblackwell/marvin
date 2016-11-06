@@ -10,6 +10,7 @@
     "jquery": "^3.1.1",
     "mkdirp": "^0.5.1",
     "regex": "^0.1.1",
+    "ssl-root-cas": "^1.2.3",
     "underscore": "^1.8.3"
   },
   "description": "HTTP/HTTPS debugging proxy",
