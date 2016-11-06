@@ -1,6 +1,4 @@
-# OS X
 .DS_Store
-
 node_modules/
 Marvin-darwin*/
 experiments/
@@ -9,6 +7,8 @@ bin/
 out/
 tools/
 saved/
+tags
+
 # Xcode
 build/
 *.pbxuser
@@ -27,8 +27,3 @@ DerivedData
 *.hmap
 *.ipa
 
-#configs
-BrokerHelper/HelperTool-Info.plist
-
-# CocoaPods
-Pods
