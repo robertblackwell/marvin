@@ -5,10 +5,10 @@ const {ipCMain, app, BrowserWindow, ipcMain, Menu, systemPreferences} = require(
 
 // const Menu = require('electron').Menu
 
-const mainMenu 		= require("./menus/main-menu") 
+const mainMenu 		= require("./src/main-menu") 
 const Backend 		= require("./src/backend")
 const Options 		= require("./test/helpers/config")
-// const TestServers  	= require("./test/helpers/test-servers")
+
 let logger 			= { log : console.log }
 
 
