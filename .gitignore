@@ -8,7 +8,7 @@ docs/
 bin/
 out/
 tools/
-test/certificate-store/
+
 # Xcode
 build/
 *.pbxuser
