@@ -1,10 +1,14 @@
 <!DOCTYPE html>
 <html>
-<head>
-<title>MarvinTitle</title>
-<link rel="stylesheet" href="./css/master.css">
+  <head>
+    <title>Marvin</title>
 
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="./photon/css/photon.css">
 <style>
+	.report * {
+		cursor:pointer;		
+	}
 	.report{
 		border: 1px solid #888888; 
 		background-color:#CCCCCC;
@@ -15,6 +19,7 @@
 	}
 	.report-header{
 		padding : 5px 10px 5px 10px;
+		cursor:pointer;
 
 	}
 	.report-request {
@@ -31,13 +36,15 @@
 		padding : 5px 10px 5px 10px;
 	}
 </style>
-<script type="text/javascript">
+    <!-- Electron Javascript -->
+    <!-- <script src="app.js" charset="utf-8"></script> -->
+    <script type="text/javascript">
 
 document.addEventListener("DOMContentLoaded",()=>{
 	const {ipcRenderer} 	= require('electron')
 	const Channel			= require('./src/channels')
 	const MainController 	= require("./src/viewer/controllers/main-controller")
-	
+	const $ 				= require('jquery')
 	const mainController = new MainController()
 
 	/**
@@ -48,6 +55,11 @@ document.addEventListener("DOMContentLoaded",()=>{
 		console.log("mainWindow receiving clear")
 		mainController.clearReports()
 	})
+	$("#btn-clear").click(()=>{
+		console.log("clear click handler")
+		mainController.clearReports()		
+	})
+
 
 	/**
 	* receive traffic reports from the backend proxy, which runs in the main process
@@ -61,8 +73,47 @@ document.addEventListener("DOMContentLoaded",()=>{
 	})
 })
 </script>
-</head>
-<body id="body">
+  </head>
 
-</body>
+	<body>
+    <!-- Wrap your entire app inside .window -->
+	    <div class="window">
+	      <!-- .toolbar-header sits at the top of your app -->
+			<header class="toolbar toolbar-header">
+				<div class="toolbar-actions">
+					<div class="btn-group">
+						<button id="btn-record" class="btn btn-default active">
+							<span class="icon icon-record icon-text"></span>Record
+						</button>
+						<button id="btn-stop"  class="btn btn-default">
+							<span class="icon icon-stop  icon-text"></span>Stop
+						</button>
+						<button id="btn-clear"  class="btn btn-default">
+							<span class="icon icon-trash  icon-text"></span>Clear
+						</button>
+					</div>
+					<div class="btn-group">
+						<button  id="btn-Filters" class="btn btn-default">
+						<span class="icon icon-home icon-text"></span>Filters</button>
+
+						<button  id="btn-preferences" class="btn btn-default pull-right">
+						<span class="icon icon-user"></span>Preferences
+						</button>
+					</div>
+				</div>
+			</header>
+
+			<div class="window-content">
+				<div class="pane-group">
+					<!--div id="side-bar" class="pane-one-third sidebar"></div-->
+					<div id="main-content" class="pane"></div>
+				</div>
+			</div>
+
+			<footer class="toolbar toolbar-footer">
+			    <h1 class="title">Version x.x.x</h1>
+			</footer>
+
+		</div>
+	</body>
 </html>

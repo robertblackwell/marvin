@@ -11,11 +11,10 @@ class MainView{
 	constructor(collection){
 		this.collection = collection;
 		let $buttons = $("");//$(buttonTmpl)
-		this.$el = $('body')
+		this.$el = $('#main-content')
 
-		$('body').append($buttons);
-		$('body').append("<div id='log-area' class='log-area'></div>")
-		this._$el = $("body").find("#log-area")
+		$('#main-content').append("<div id='log-area' class='log-area'></div>")
+		this._$el = $("#main-content").find("#log-area")
 		this._el = this._$el[0];
 		this.subViews = [];
 		this.collection.on('add', (report)=>{
@@ -34,10 +33,6 @@ class MainView{
 	render(){
 		this._$el.empty()
 		return;
-		$('body').empty()
-		$('body').append($buttons);
-		$('body').append("<div id='log-area' class='log-area'></div>")
-		this.$el = $("body").find("#log-area")
 	}
 }
 module.exports = MainView

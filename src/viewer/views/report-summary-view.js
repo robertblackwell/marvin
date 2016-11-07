@@ -112,10 +112,12 @@ function renderResponse(resp, $el){
 
 function renderBody(body){
 	let $myel = $("<div class='html-body'><h4>Body</h4><div>")
-	let tml= "<code><pre><%- body %></pre></code>"
-	let tf = _.template(tml)
-	let h = tf({body: body})
-	$myel.append( $(h))
+	if( body.length != 0){
+		let tml= "<code><pre><%- body %></pre></code>"
+		let tf = _.template(tml)
+		let h = tf({body: body})
+		$myel.append( $(h))
+	}
 	$myel.append("</div></div>")	
 	return $myel
 }
