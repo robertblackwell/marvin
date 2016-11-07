@@ -4,6 +4,7 @@
   "dependencies": {
     "async": "*",
     "backbone": "^1.3.3",
+    "backbone-forms": "^0.14.1",
     "electron": "^1.4.5",
     "electron-menus": "^0.1.0",
     "html-entities": "^1.2.0",
